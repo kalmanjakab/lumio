@@ -11,6 +11,8 @@ export default async function OfflinePage() {
       <WifiOff className="size-8 text-muted" aria-hidden />
       <h1 className="text-2xl font-extrabold">{t("title")}</h1>
       <p className="text-muted">{t("text")}</p>
+      {/* Teljes újratöltés kell (nem kliensoldali navigáció), hogy a hálózatról jöjjön az oldal. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a href="/" className="inline-flex h-11 items-center rounded-full bg-primary px-5 font-semibold text-on-primary">
         {t("retry")}
       </a>

@@ -34,3 +34,21 @@ export function sessionSecret(): Uint8Array {
   }
   return new TextEncoder().encode(s);
 }
+
+/**
+ * Az admin jelszó argon2id hash-e. A generátor base64 formában adja ki (abban nincs „$” jel),
+ * mert a „$” jeleket a futtatókörnyezet változóként értelmezheti és kivághatja.
+ * A nyers „$argon2id$…” formát is elfogadjuk.
+ */
+export function adminPasswordHash(): string | null {
+  const raw = (process.env.ADMIN_PASSWORD_HASH || "").trim();
+  if (!raw) return null;
+  if (raw.startsWith("$argon2")) return raw;
+  try {
+    const decoded = Buffer.from(raw, "base64").toString("utf8").trim();
+    if (decoded.startsWith("$argon2")) return decoded;
+  } catch {
+    /* érvénytelen érték */
+  }
+  return null;
+}

@@ -9,7 +9,9 @@ import { LogoMark } from "../logo";
 // A hash a böngészőben készül: a jelszó nem megy el sehova (se szerverre, se máshová).
 async function makeHash(password: string) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  return argon2id({ password, salt, parallelism: 1, iterations: 2, memorySize: 19456, hashLength: 32, outputType: "encoded" });
+  const encoded = await argon2id({ password, salt, parallelism: 1, iterations: 2, memorySize: 19456, hashLength: 32, outputType: "encoded" });
+  // Base64 formában adjuk ki, mert a „$” jeleket a szerver környezete változóként értelmezhetné.
+  return btoa(encoded);
 }
 
 function randomSecret() {

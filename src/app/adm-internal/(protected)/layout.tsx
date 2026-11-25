@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isAdmin } from "@/lib/server/auth";
-import { adminBase } from "@/lib/server/env";
+import { adminBase, adminPasswordHash } from "@/lib/server/env";
 import { AdminLogin } from "@/components/admin/admin-login";
 import { AdminLogout } from "@/components/admin/admin-logout";
 import { LogoMark } from "@/components/logo";
@@ -8,7 +8,7 @@ import { LogoMark } from "@/components/logo";
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const base = adminBase();
   if (!(await isAdmin())) {
-    return <AdminLogin configured={Boolean(process.env.ADMIN_PASSWORD_HASH?.trim())} base={base} />;
+    return <AdminLogin configured={adminPasswordHash() !== null} base={base} />;
   }
   const links = [
     { href: base, label: "Tartalom" },

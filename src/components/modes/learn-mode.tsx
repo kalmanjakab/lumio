@@ -80,6 +80,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishedOnce = useRef(false);
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
 
   // Betöltés.
   useEffect(() => {
@@ -102,6 +103,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
   );
 
   const cardId = state ? currentCardId(state) : undefined;
+  const typesKey = settings ? `${typePath(settings).join(",")}|${settings.answerWithTerm}|${settings.answerWithDefinition}` : "";
   const qKey = state ? `${state.round}:${state.answered}:${cardId ?? ""}` : "";
 
   // Új kérdés összeállítása, amikor új kártya kerül sorra.
@@ -118,6 +120,14 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
     setFlipped(false);
     setFeedback(null);
   }, [qKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ha menet közben változnak a kérdéstípusok vagy a válaszirány, a még megválaszolatlan kérdés újraépül.
+  useEffect(() => {
+    if (!state || !settings || !cardId || feedback) return;
+    setQuestion(buildQuestion(cards, cardId, questionTypeFor(state, cardId, settings), settings));
+    setAnswerText("");
+    setFlipped(false);
+  }, [typesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const promptLang = question ? (question.answerSide === "term" ? material.definitionLang : material.termLang) : material.termLang;
   const answerLang = question ? (question.answerSide === "term" ? material.termLang : material.definitionLang) : material.definitionLang;
@@ -136,6 +146,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
   useEffect(() => {
     if (state?.phase === "finished" && !finishedOnce.current) {
       finishedOnce.current = true;
+      setFinishedAt(Date.now());
       if (user.soundEffects) playSound("finish", user.volume);
     }
   }, [state?.phase, user.soundEffects, user.volume]);
@@ -193,6 +204,12 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
     commit(feedback.correct);
   };
 
+  const pickOption = (i: number) => {
+    if (!question?.options || feedback) return;
+    const correct = question.options[i] === question.answer;
+    showFeedback({ correct, userAnswer: question.options[i]!, picked: i });
+  };
+
   // Billentyűk: 1–4 a feleletválasztóshoz, Enter a folytatáshoz.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -215,12 +232,6 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-
-  const pickOption = (i: number) => {
-    if (!question?.options || feedback) return;
-    const correct = question.options[i] === question.answer;
-    showFeedback({ correct, userAnswer: question.options[i]!, picked: i });
-  };
 
   const changeSettings = (patch: Partial<LearnSettings>) => {
     if (!settings) return;
@@ -367,7 +378,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
 
   // ---------- Vége ----------
   if (state.phase === "finished") {
-    const elapsed = Date.now() - state.startedAt;
+    const elapsed = (finishedAt ?? state.startedAt) - state.startedAt;
     return (
       <div className="min-h-dvh">
         {header}

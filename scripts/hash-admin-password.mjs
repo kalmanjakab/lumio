@@ -30,4 +30,4 @@ if (pw.length < 12) {
   process.exit(1);
 }
 const h = await hash(pw, { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 });
-console.log("\nADMIN_PASSWORD_HASH értéke:\n" + h);
+console.log("\nADMIN_PASSWORD_HASH értéke (base64):\n" + Buffer.from(h, "utf8").toString("base64"));

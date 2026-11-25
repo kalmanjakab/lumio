@@ -2,6 +2,7 @@ import { ApiError, clientIp, json, parseJson, route } from "@/lib/server/http";
 import { consume, peek } from "@/lib/server/ratelimit";
 import { verifyPassword } from "@/lib/server/password";
 import { createAdminSession } from "@/lib/server/auth";
+import { adminPasswordHash } from "@/lib/server/env";
 import { z } from "zod";
 
 const WINDOW = 15 * 60;
@@ -13,7 +14,7 @@ export const POST = route(async (req) => {
     throw new ApiError(429, "too_many", { retryAfter: Math.max(ipRl.retryAfterSec, globalRl.retryAfterSec) });
   }
   const { password } = await parseJson(req, z.object({ password: z.string().min(1).max(200) }));
-  const stored = process.env.ADMIN_PASSWORD_HASH?.trim();
+  const stored = adminPasswordHash();
   if (!stored) throw new ApiError(503, "admin_not_configured");
   const ok = await verifyPassword(stored, password);
   if (!ok) {
