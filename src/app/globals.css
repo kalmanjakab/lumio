@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+/* ===== Flashly design tokenek =====
+   Világos alapértékek a :root-on, sötét értékek a rendszerbeállításra (ha nincs kifejezett
+   világos választás) és a kifejezett sötét választásra (data-theme="dark"). */
+:root {
+  --bg: #f7f5f2;
+  --surface: #ffffff;
+  --surface-2: #efece7;
+  --surface-3: #e7e3dc;
+  --border: #e2ded7;
+  --text: #1c2127;
+  --muted: #59616b;
+  --primary: #0b6e7f;
+  --primary-hover: #095e6c;
+  --on-primary: #ffffff;
+  --primary-soft: #ddeff1;
+  --accent: #bf7a0f;
+  --accent-fill: #e9a23b;
+  --learning: #b54708;
+  --learning-soft: #fdebdd;
+  --known: #257a3e;
+  --known-soft: #e1f3e6;
+  --danger: #c02b2b;
+  --danger-soft: #fbe4e4;
+  --overlay: rgba(20, 24, 28, 0.45);
+  --shadow: 0 1px 2px rgba(28, 33, 39, 0.06), 0 4px 14px rgba(28, 33, 39, 0.07);
+  --shadow-lg: 0 8px 30px rgba(28, 33, 39, 0.14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1417;
+    --surface: #172026;
+    --surface-2: #1f2a31;
+    --surface-3: #27343c;
+    --border: #2c3942;
+    --text: #e8ecef;
+    --muted: #9aa6b0;
+    --primary: #5cc8d6;
+    --primary-hover: #7ad4df;
+    --on-primary: #06262b;
+    --primary-soft: #123b42;
+    --accent: #f2b84b;
+    --accent-fill: #f2b84b;
+    --learning: #ff9f43;
+    --learning-soft: #3a2410;
+    --known: #5bd07a;
+    --known-soft: #15301e;
+    --danger: #ff7b7b;
+    --danger-soft: #3a1717;
+    --overlay: rgba(0, 0, 0, 0.6);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1417;
+  --surface: #172026;
+  --surface-2: #1f2a31;
+  --surface-3: #27343c;
+  --border: #2c3942;
+  --text: #e8ecef;
+  --muted: #9aa6b0;
+  --primary: #5cc8d6;
+  --primary-hover: #7ad4df;
+  --on-primary: #06262b;
+  --primary-soft: #123b42;
+  --accent: #f2b84b;
+  --accent-fill: #f2b84b;
+  --learning: #ff9f43;
+  --learning-soft: #3a2410;
+  --known: #5bd07a;
+  --known-soft: #15301e;
+  --danger: #ff7b7b;
+  --danger-soft: #3a1717;
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-learning: var(--learning);
+  --color-learning-soft: var(--learning-soft);
+  --color-known: var(--known);
+  --color-known-soft: var(--known-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-overlay: var(--overlay);
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+/* Biztonságos zóna a telepített appban (iPhone notch, alsó csík). */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Kártyafordítás */
+.flip-scene {
+  perspective: 1400px;
+}
+.flip-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.flip-inner.is-flipped {
+  transform: rotateX(180deg);
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateX(180deg);
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+}
+.animate-shake {
+  animation: shake 0.38s ease-in-out;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes tile-out {
+  to {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+.animate-pop-in {
+  animation: pop-in 0.2s ease-out;
+}
+.animate-tile-out {
+  animation: tile-out 0.3s ease-in forwards;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mozgás csökkentése, ha a felhasználó ezt kéri. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
