@@ -8,11 +8,11 @@ function adminSlug() {
   return /^[a-z0-9][a-z0-9-]{7,79}$/.test(raw) ? raw : DEFAULT_ADMIN_SLUG;
 }
 
-function buildCsp(nonce: string) {
+function buildCsp(nonce: string, allowWasm = false) {
   const isDev = process.env.NODE_ENV === "development";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}${allowWasm ? " 'wasm-unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
@@ -36,14 +36,16 @@ export function proxy(request: NextRequest) {
     return new NextResponse("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } });
   }
 
+  const slug = adminSlug();
+  const isAdmin = pathname === `/${slug}` || pathname.startsWith(`/${slug}/`);
+  // A jelszó-hash generátor a böngészőben futó WebAssemblyt használ, csak ott engedjük.
+  const isHashTool = pathname === `/${slug}/hash`;
+
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64");
-  const csp = buildCsp(nonce);
+  const csp = buildCsp(nonce, isHashTool);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
-
-  const slug = adminSlug();
-  const isAdmin = pathname === `/${slug}` || pathname.startsWith(`/${slug}/`);
 
   let response: NextResponse;
   if (isAdmin) {
