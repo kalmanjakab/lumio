@@ -11,8 +11,8 @@ export default async function AdminHome() {
     .select({
       id: schema.groups.id,
       name: schema.groups.name,
-      sets: sql<number>`(select count(*)::int from ${schema.materials} m where m.group_id = ${schema.groups.id})`,
-      members: sql<number>`(select count(*)::int from ${schema.userGroupAccess} a where a.group_id = ${schema.groups.id} and a.access_version = ${schema.groups.accessVersion})`,
+      sets: sql<number>`(select count(*)::int from ${schema.materials} m where m.group_id = "groups"."id")`,
+      members: sql<number>`(select count(*)::int from ${schema.userGroupAccess} a where a.group_id = "groups"."id" and a.access_version = "groups"."access_version")`,
     })
     .from(schema.groups)
     .orderBy(asc(schema.groups.sortOrder), asc(schema.groups.name));

@@ -9,6 +9,7 @@ import { EmptyState, SectionTitle } from "@/components/ui";
 export default async function HomePage() {
   const t = await getTranslations("home");
   const tc = await getTranslations("common");
+  const tg = await getTranslations("groups");
   const viewer = await getViewer();
   const [groups, materials, recent] = await Promise.all([
     listGroupsForViewer(),
@@ -46,7 +47,7 @@ export default async function HomePage() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((g) => (
             <li key={g.id}>
-              <GroupTile href={`/groups/${g.id}`} name={g.name} meta={g.unlocked ? tc("seeAll") : tc("locked")} locked={!g.unlocked} />
+              <GroupTile href={`/groups/${g.id}`} name={g.name} meta={g.unlocked ? `${tg("open")} · ${tc("materials", { count: g.materialCount ?? 0 })}` : tc("locked")} locked={!g.unlocked} />
             </li>
           ))}
         </ul>

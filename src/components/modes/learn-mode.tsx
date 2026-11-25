@@ -93,14 +93,33 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
     setState(restored ?? newLearnState(ids, s, { levels: ephemeral ? {} : levels }));
   }, [ready, data, settings, cards, ephemeral, user.defaultTts]);
 
+  const pendingSave = useRef<{ value: LearnState | null } | null>(null);
   const persist = useCallback(
     (next: LearnState | null) => {
       if (ephemeral) return;
+      pendingSave.current = { value: next };
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => store.saveStudyState("learn", next), 400);
+      saveTimer.current = setTimeout(() => {
+        if (pendingSave.current) store.saveStudyState("learn", pendingSave.current.value);
+        pendingSave.current = null;
+      }, 400);
     },
     [store, ephemeral],
   );
+
+  // Kilépéskor a még el nem küldött állapotot azonnal mentjük.
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (pendingSave.current) store.saveStudyState("learn", pendingSave.current.value);
+      pendingSave.current = null;
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [store]);
 
   const cardId = state ? currentCardId(state) : undefined;
   const typesKey = settings ? `${typePath(settings).join(",")}|${settings.answerWithTerm}|${settings.answerWithDefinition}` : "";

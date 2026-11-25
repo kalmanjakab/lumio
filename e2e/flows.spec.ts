@@ -62,6 +62,14 @@ test.describe("Csoport feloldása", () => {
     await expect(page.locator('section[aria-labelledby="my-groups"]').getByText("Angol")).toBeVisible();
     await page.goto(`/sets/${s.protectedSetId}`);
     await expect(page.getByRole("heading", { name: "Titkos Unit 3" })).toBeVisible();
+
+    // A Kártyák módban elkezdett készlet megjelenik a „Folytasd” részben.
+    await page.goto(`/sets/${s.protectedSetId}/flashcards`);
+    await page.getByRole("button", { name: "Tudom", exact: true }).click();
+    await page.waitForTimeout(800);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Folytasd" })).toBeVisible();
+    await expect(page.getByText("1/8 kártya rendezve")).toBeVisible();
   });
 });
 

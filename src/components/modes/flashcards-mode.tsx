@@ -72,13 +72,32 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
     setShortcutHidden(readLocal<boolean>("fcShortcutHidden", false));
   }, [ready, data, settings, cards, userSettings.defaultFront, userSettings.defaultTts]);
 
+  const pendingSave = useRef<FlashcardsState | null>(null);
   const persist = useCallback(
     (next: FlashcardsState) => {
+      pendingSave.current = next;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => store.saveStudyState("flashcards", { ...next, history: [] }), 500);
+      saveTimer.current = setTimeout(() => {
+        if (pendingSave.current) store.saveStudyState("flashcards", { ...pendingSave.current, history: [] });
+        pendingSave.current = null;
+      }, 500);
     },
     [store],
   );
+
+  // Kilépéskor (vagy az oldal elhagyásakor) a még el nem küldött állapotot azonnal mentjük.
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (pendingSave.current) store.saveStudyState("flashcards", { ...pendingSave.current, history: [] });
+      pendingSave.current = null;
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, [store]);
 
   const update = useCallback(
     (fn: (s: FlashcardsState) => FlashcardsState) => {

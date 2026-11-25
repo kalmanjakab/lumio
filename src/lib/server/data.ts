@@ -14,7 +14,7 @@ export async function listGroupsForViewer(): Promise<GroupListItem[]> {
     .select({
       id: schema.groups.id,
       name: schema.groups.name,
-      materialCount: sql<number>`(select count(*)::int from ${schema.materials} m where m.group_id = ${schema.groups.id})`,
+      materialCount: sql<number>`(select count(*)::int from ${schema.materials} m where m.group_id = "groups"."id")`,
     })
     .from(schema.groups)
     .orderBy(asc(schema.groups.sortOrder), asc(schema.groups.name));
@@ -30,7 +30,7 @@ const materialSelect = {
   groupName: schema.groups.name,
   termLang: schema.materials.termLang,
   definitionLang: schema.materials.definitionLang,
-  cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = ${schema.materials.id})`,
+  cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = "materials"."id")`,
 };
 
 /** Minden anyag, amihez a néző hozzáfér: a nyilvánosak és a megnyitott csoportok anyagai. */
@@ -152,8 +152,8 @@ export async function getRecentForUser(userId: string, limit = 8): Promise<Recen
       updatedAt: schema.studyState.updatedAt,
       title: schema.materials.title,
       groupId: schema.materials.groupId,
-      cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = ${schema.materials.id})`,
-      mastered: sql<number>`(select count(*)::int from ${schema.cardProgress} p where p.user_id = ${userId} and p.material_id = ${schema.materials.id} and p.level >= 3)`,
+      cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = "materials"."id")`,
+      mastered: sql<number>`(select count(*)::int from ${schema.cardProgress} p where p.user_id = ${userId} and p.material_id = "materials"."id" and p.level >= 3)`,
     })
     .from(schema.studyState)
     .innerJoin(schema.materials, eq(schema.materials.id, schema.studyState.materialId))
