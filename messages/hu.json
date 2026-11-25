@@ -119,7 +119,7 @@
     "noStarred": "Még nincs csillagozott kártyád. A kártyák mellett lévő csillaggal jelölheted meg őket.",
     "noRecent": "Még nem tanultál egy készletet sem.",
     "noTests": "Még nem írtál tesztet.",
-    "testRow": "{percent}% · {grade}-es · {date}"
+    "testRow": "{percent}% · {grade, select, 1 {1-es} 2 {2-es} 3 {3-as} 4 {4-es} 5 {5-ös} other {{grade}}} · {date}"
   },
   "groups": {
     "title": "Csoportok",
@@ -163,7 +163,7 @@
     "nextCard": "Következő kártya",
     "progressMastered": "{count} elsajátítva",
     "empty": "Ebben a készletben még nincs kártya.",
-    "testSummary": "{percent}% · {grade}-es"
+    "testSummary": "{percent}% · {grade, select, 1 {1-es} 2 {2-es} 3 {3-as} 4 {4-es} 5 {5-ös} other {{grade}}}"
   },
   "sheet": {
     "general": "Általános",
@@ -313,7 +313,7 @@
     "matchesTerm": "Ehhez a jelentéshez tartozik ez a szó?",
     "resultTitle": "Eredmény",
     "grade": "Osztályzat",
-    "gradeValue": "{grade}-es",
+    "gradeValue": "{grade, select, 1 {1-es} 2 {2-es} 3 {3-as} 4 {4-es} 5 {5-ös} other {{grade}}}",
     "score": "{correct} / {total} helyes",
     "elapsed": "Idő",
     "onlyMistakes": "Csak a hibák",
@@ -357,7 +357,7 @@
     "backToSet": "Vissza a készlethez",
     "needTwo": "A párosításhoz legalább 2 kártya kell.",
     "tileHint": "Koppints két összetartozó csempére, vagy húzd az egyiket a másikra.",
-    "pickFirst": "Előbb a {side} oldali csempét válaszd."
+    "pickFirst": "Kezdd egy „{side}” csempével."
   },
   "settings": {
     "title": "Beállítások",
