@@ -10,6 +10,7 @@ import { useModeCards } from "@/lib/client/use-mode-cards";
 import { speak, stopSpeaking } from "@/lib/client/tts";
 import { playSound } from "@/lib/client/sound";
 import { readLocal, writeLocal } from "@/lib/client/storage";
+import { lockGesture, swipeDecision, swipeProgress, swipeThreshold } from "@/lib/swipe";
 import {
   answer,
   browse,
@@ -26,8 +27,6 @@ import { Sheet, SheetGroup, ConfirmDialog } from "../sheet";
 import { DualProgress, Segmented, Spinner, Switch, cn } from "../ui";
 import { GuestNudge } from "../home/guest-nudge";
 import { ModeEmpty, ModeHeader } from "./mode-header";
-
-const SWIPE_THRESHOLD = 90;
 
 export function FlashcardsMode({ material, cards: allCards, serverData }: { material: MaterialDTO; cards: CardDTO[]; serverData: StudyData | null }) {
   const t = useTranslations("flashcards");
@@ -47,11 +46,15 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
   const [sheetOpen, setSheetOpen] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
-  const [drag, setDrag] = useState<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
-  const [leaving, setLeaving] = useState<null | "known" | "learning">(null);
+  const [drag, setDrag] = useState<{ x: number; y: number; active: boolean; th?: number }>({ x: 0, y: 0, active: false });
+  const [leaving, setLeaving] = useState<null | { result: "known" | "learning"; x: number; y: number }>(null);
   const [shortcutHidden, setShortcutHidden] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const dragStart = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  // Az épp folyó húzás adatai. A „lock” dönti el, hogy húzás vagy görgetés ez.
+  const gesture = useRef<{ id: number; x: number; y: number; lock: null | "swipe" | "scroll"; samples: { x: number; t: number }[]; captured: boolean; th: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const deciding = useRef(false);
+  const suppressClickUntil = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishedSound = useRef(false);
 
@@ -150,18 +153,39 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
     if (state && !state.done) finishedSound.current = false;
   }, [state, userSettings.soundEffects, userSettings.volume]);
 
+  // Egyetlen válaszkezelő a gombokhoz, a billentyűkhöz és a húzáshoz.
+  // A „deciding” zár miatt egy kártyára csak egy válasz kerülhet rögzítésre.
   const decide = useCallback(
-    (result: "known" | "learning") => {
-      if (!state || state.done || leaving) return;
-      setLeaving(result);
+    (result: "known" | "learning", from?: { x: number; y: number }) => {
+      if (!state || state.done || deciding.current) return;
+      deciding.current = true;
+      // A kártya a húzás irányába repül ki (gombnál vízszintesen).
+      const w = Math.max(window.innerWidth, 400) * 1.2;
+      const sx = result === "known" ? 1 : -1;
+      const vx = from ? from.x : sx;
+      const vy = from ? from.y : 0;
+      const len = Math.hypot(vx, vy) || 1;
+      setLeaving({ result, x: (Math.abs(vx) / len) * w * sx, y: (vy / len) * w });
       setTimeout(() => {
         update((s) => answer(s, result));
         setLeaving(null);
         setDrag({ x: 0, y: 0, active: false });
-      }, 180);
+        deciding.current = false;
+      }, 220);
     },
-    [state, leaving, update],
+    [state, update],
   );
+
+  // Érintésnél a görgetést csak akkor tiltjuk le, ha a mozdulat már biztosan kártyahúzás.
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const onTouchMove = (e: TouchEvent) => {
+      if (gesture.current?.lock === "swipe" && e.cancelable) e.preventDefault();
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  });
 
   const toggleStar = () => {
     if (!current) return;
@@ -224,36 +248,66 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
   const total = state.queue.length;
   const sortMode = settings.method === "sort";
   const dx = drag.x;
-  const tilt = Math.max(-12, Math.min(12, dx / 18));
-  const intent = dx > 40 ? "known" : dx < -40 ? "learning" : null;
-  const flyX = leaving === "known" ? 600 : leaving === "learning" ? -600 : dx;
+  const progress = drag.active ? swipeProgress(drag.x, drag.y, drag.th ?? 100) : 0;
+  const tilt = Math.max(-15, Math.min(15, dx / 16));
+  const intent = leaving ? leaving.result : progress > 0.25 ? (dx > 0 ? "known" : "learning") : null;
+  const feedback = leaving ? 1 : progress;
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (!sortMode && e.pointerType === "mouse") return;
-    dragStart.current = { x: e.clientX, y: e.clientY, moved: false };
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  const resetDrag = () => setDrag({ x: 0, y: 0, active: false });
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (leaving || deciding.current || gesture.current) return;
+    if (e.pointerType === "mouse" && (e.button !== 0 || !sortMode)) return;
+    gesture.current = { id: e.pointerId, x: e.clientX, y: e.clientY, lock: null, samples: [{ x: e.clientX, t: e.timeStamp }], captured: false, th: swipeThreshold(e.currentTarget.offsetWidth) };
   };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const st = dragStart.current;
-    if (!st) return;
-    const x = e.clientX - st.x;
-    const y = e.clientY - st.y;
-    if (Math.abs(x) > 8) st.moved = true;
-    if (st.moved) setDrag({ x, y: y * 0.2, active: true });
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    const x = e.clientX - g.x;
+    const y = e.clientY - g.y;
+    if (!g.lock) {
+      g.lock = lockGesture(x, y);
+      if (g.lock === "scroll") {
+        // Függőleges mozdulat: a böngésző görget, a kártya marad.
+        gesture.current = null;
+        return;
+      }
+      if (!g.lock) return;
+    }
+    if (!g.captured) {
+      g.captured = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      window.getSelection()?.removeAllRanges();
+    }
+    g.samples.push({ x: e.clientX, t: e.timeStamp });
+    if (g.samples.length > 6) g.samples.shift();
+    setDrag({ x, y: y * 0.6, active: true, th: g.th });
   };
-  const onPointerUp = () => {
-    const st = dragStart.current;
-    dragStart.current = null;
-    if (!st) return;
-    if (!st.moved) {
-      setDrag({ x: 0, y: 0, active: false });
+  const endGesture = (e: React.PointerEvent<HTMLDivElement>, cancelled: boolean) => {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    gesture.current = null;
+    if (g.lock !== "swipe") {
+      resetDrag();
       return;
     }
-    if (sortMode && Math.abs(drag.x) > SWIPE_THRESHOLD) decide(drag.x > 0 ? "known" : "learning");
-    else if (!sortMode && Math.abs(drag.x) > SWIPE_THRESHOLD) {
-      update((s) => browse(s, drag.x < 0 ? 1 : -1));
-      setDrag({ x: 0, y: 0, active: false });
-    } else setDrag({ x: 0, y: 0, active: false });
+    // A húzás után érkező „click” ne fordítsa meg a kártyát.
+    suppressClickUntil.current = Date.now() + 400;
+    const x = e.clientX - g.x;
+    const y = e.clientY - g.y;
+    const first = g.samples.find((p) => e.timeStamp - p.t <= 120) ?? g.samples[0]!;
+    const dt = Math.max(1, e.timeStamp - first.t);
+    const vx = (e.clientX - first.x) / dt;
+    const dir = cancelled ? null : swipeDecision(x, y, vx, g.th);
+    if (!dir) {
+      resetDrag();
+      return;
+    }
+    if (sortMode) decide(dir === "right" ? "known" : "learning", { x, y });
+    else {
+      update((s) => browse(s, dir === "left" ? 1 : -1));
+      resetDrag();
+    }
   };
 
   const settingsSheet = (
@@ -431,16 +485,28 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-6 pt-4">
         <div className="flip-scene relative flex-1" style={{ minHeight: "18rem" }}>
           <div
-            className="absolute inset-0 touch-pan-y select-none"
+            ref={cardRef}
+            data-testid="flashcard"
+            className={cn("absolute inset-0 touch-manipulation", drag.active && "cursor-grabbing select-none")}
             style={{
-              transform: `translate(${flyX}px, ${drag.y}px) rotate(${leaving ? (leaving === "known" ? 14 : -14) : tilt}deg)`,
-              transition: drag.active && !leaving ? "none" : "transform 0.2s ease-out",
+              transform: leaving
+                ? `translate(${leaving.x}px, ${leaving.y}px) rotate(${leaving.result === "known" ? 18 : -18}deg)`
+                : `translate(${drag.x}px, ${drag.y}px) rotate(${tilt}deg)`,
+              transition: leaving
+                ? "transform 0.22s ease-in, opacity 0.22s ease-in"
+                : drag.active
+                  ? "none"
+                  : "transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)",
               opacity: leaving ? 0 : 1,
             }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            onPointerUp={(e) => endGesture(e, false)}
+            onPointerCancel={(e) => endGesture(e, true)}
+            onLostPointerCapture={(e) => {
+              // Csak a saját elfogásunk elvesztése számít (a belső elemek implicit elfogása nem).
+              if (e.target === e.currentTarget) endGesture(e, true);
+            }}
           >
             <div className={cn("flip-inner size-full", flipped && "is-flipped")}>
               {(["front", "back"] as const).map((side) => (
@@ -449,7 +515,7 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
                   className={cn(
                     "flip-face flex flex-col rounded-3xl border-2 bg-surface shadow-pop",
                     side === "back" && "flip-back",
-                    intent === "known" ? "border-known" : intent === "learning" ? "border-learning" : "border-transparent",
+                    sortMode && intent === "known" ? "border-known" : sortMode && intent === "learning" ? "border-learning" : "border-transparent",
                   )}
                   aria-hidden={(side === "back") !== flipped}
                 >
@@ -504,7 +570,8 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
                     type="button"
                     data-card="1"
                     onClick={() => {
-                      if (!drag.active) setFlipped((f) => !f);
+                      if (drag.active || leaving || Date.now() < suppressClickUntil.current) return;
+                      setFlipped((f) => !f);
                     }}
                     tabIndex={(side === "back") !== flipped ? -1 : 0}
                     aria-label={`${side === "front" ? frontText : backText}. ${t("tapToFlip")}`}
@@ -513,15 +580,28 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
                     <span className="whitespace-pre-wrap break-words text-2xl font-medium leading-snug sm:text-4xl">{side === "front" ? frontText : backText}</span>
                     {side === "front" && showHint ? <span className="mt-4 font-mono text-lg tracking-widest text-muted">{hintFor(backText)}</span> : null}
                   </button>
-                  {intent && side === (flipped ? "back" : "front") ? (
-                    <span
-                      className={cn(
-                        "pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 rounded-full px-4 py-1.5 text-sm font-bold",
-                        intent === "known" ? "bg-known-soft text-known" : "bg-learning-soft text-learning",
-                      )}
-                    >
-                      {intent === "known" ? t("know") : t("stillLearning")}
-                    </span>
+                  {sortMode && intent && side === (flipped ? "back" : "front") ? (
+                    <>
+                      <span
+                        aria-hidden
+                        className={cn("pointer-events-none absolute inset-0 rounded-3xl", intent === "known" ? "bg-known-soft" : "bg-learning-soft")}
+                        style={{ opacity: Math.min(0.55, feedback * 0.55) }}
+                      />
+                      <span className="pointer-events-none absolute inset-x-0 top-16 flex justify-center">
+                        <span
+                          data-testid="swipe-feedback"
+                          data-intent={intent}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border-2 bg-surface px-4 py-1.5 text-sm font-bold shadow-card",
+                            intent === "known" ? "border-known text-known" : "border-learning text-learning",
+                          )}
+                          style={{ opacity: Math.min(1, 0.4 + feedback), transform: `scale(${0.85 + feedback * 0.2})` }}
+                        >
+                          {intent === "known" ? <Check className="size-4" aria-hidden /> : <X className="size-4" aria-hidden />}
+                          {intent === "known" ? t("know") : t("stillLearning")}
+                        </span>
+                      </span>
+                    </>
                   ) : null}
                   {!shortcutHidden && side === "front" ? (
                     <div className="hidden items-center justify-center gap-3 rounded-b-3xl bg-primary-soft px-4 py-2.5 text-sm lg:flex">

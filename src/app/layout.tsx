@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import "@fontsource-variable/figtree";
 import "./globals.css";
+import { AppUpdater } from "@/components/shell/app-updater";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} data-theme={dataTheme} suppressHydrationWarning>
       <body className="min-h-dvh bg-bg text-fg antialiased">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <AppUpdater />
       </body>
     </html>
   );

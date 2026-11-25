@@ -267,3 +267,20 @@ export const rateLimits = pgTable("rate_limits", {
   windowStart: ts("window_start").notNull().defaultNow(),
   count: integer("count").notNull().default(0),
 });
+
+// Külső (AI) importok naplója: ezzel szűrjük ki az ismételt beküldéseket.
+// Csak hash-eket tárolunk, a kérés tartalmát és az API-kulcsot nem.
+export const apiImports = pgTable(
+  "api_imports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Az Idempotency-Key fejléc SHA-256 hash-e (ha a kliens küldött ilyet).
+    idempotencyKeyHash: text("idempotency_key_hash").unique(),
+    // A normalizált tartalom (cím + kártyák) SHA-256 hash-e.
+    contentHash: text("content_hash").notNull(),
+    materialId: uuid("material_id").references(() => materials.id, { onDelete: "set null" }),
+    cardCount: integer("card_count").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("api_imports_content_idx").on(t.contentHash, t.createdAt)],
+);

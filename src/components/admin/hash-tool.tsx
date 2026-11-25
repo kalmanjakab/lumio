@@ -49,6 +49,7 @@ export function HashTool() {
   const [pw2, setPw2] = useState("");
   const [hash, setHash] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -105,6 +106,17 @@ export function HashTool() {
           Titok generálása
         </Button>
         {secret ? <CopyBox label="Ezt másold be a Vercelen a SESSION_SECRET értékének:" value={secret} /> : null}
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-card">
+        <h2 className="font-bold">3. API-kulcs → IMPORT_API_KEY (nem kötelező)</h2>
+        <p className="text-sm text-muted">
+          Ezzel a kulccsal tudnak külső AI-agentek kártyakészletet feltölteni (POST /api/v1/sets). Ha nem állítod be, ez a végpont ki van kapcsolva. A kulcsot az agent beállításaiba is be kell másolnod.
+        </p>
+        <Button variant="soft" onClick={() => setApiKey(randomSecret())}>
+          API-kulcs generálása
+        </Button>
+        {apiKey ? <CopyBox label="Ezt másold be a Vercelen az IMPORT_API_KEY értékének (és az agentnek):" value={apiKey} /> : null}
       </section>
     </main>
   );

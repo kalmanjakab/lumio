@@ -12,6 +12,7 @@ import { api, ApiClientError } from "@/lib/client/api";
 import type { GradeThresholds } from "@/lib/db/schema";
 import { DEFAULT_THRESHOLDS } from "@/lib/grading-scale";
 import { parseImport } from "@/lib/import-parser";
+import { useAutoReloadBlocker } from "@/lib/client/app-update";
 
 type Row = { key: string; id?: string; term: string; definition: string };
 
@@ -90,6 +91,8 @@ export function SetEditor({ material, groups, base, globalThresholds }: { materi
   const [thresholds, setThresholds] = useState<GradeThresholds>(material.gradeThresholds ?? globalThresholds ?? DEFAULT_THRESHOLDS);
   const [rows, setRows] = useState<Row[]>(() => material.cards.map((c) => ({ key: c.id, id: c.id, term: c.term, definition: c.definition })));
   const [dirty, setDirty] = useState(false);
+  // Mentetlen változás mellett az automatikus frissítés nem töltheti újra az oldalt.
+  useAutoReloadBlocker(dirty);
   const [saving, setSaving] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");

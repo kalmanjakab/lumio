@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { readFileSync } from "node:fs";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+// Build-azonosító: minden deploymentnél új (commit + build ideje). Ebből lesz a kijelzett
+// verziószám és a service worker verziója is. A process.env-be írjuk, hogy a build
+// minden részfolyamata ugyanazt az értéket lássa.
+if (!process.env.FLASHLY_BUILD_ID) {
+  const sha = (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7);
+  const now = new Date();
+  process.env.FLASHLY_BUILD_TIME = now.toISOString();
+  process.env.FLASHLY_COMMIT = sha;
+  process.env.FLASHLY_BUILD_ID = `${sha || "local"}-${now.getTime().toString(36)}`;
+}
+const appVersion = (JSON.parse(readFileSync("./package.json", "utf8")) as { version: string }).version;
 
 // Biztonsági fejlécek minden válaszra. A CSP-t (nonce-szal) a proxy.ts teszi a HTML oldalakra.
 const securityHeaders = [
@@ -21,6 +34,13 @@ const nextConfig: NextConfig = {
   // ezért a régi (kérésenként dinamikus) modellt használjuk: semmi védett nem kerülhet statikus gyorsítótárba.
   cacheComponents: false,
   poweredByHeader: false,
+  generateBuildId: async () => process.env.FLASHLY_BUILD_ID!,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_BUILD_ID: process.env.FLASHLY_BUILD_ID!,
+    NEXT_PUBLIC_BUILD_TIME: process.env.FLASHLY_BUILD_TIME || "",
+    NEXT_PUBLIC_COMMIT: process.env.FLASHLY_COMMIT || "",
+  },
   reactStrictMode: true,
   serverExternalPackages: ["@node-rs/argon2", "sharp", "pg"],
   turbopack: {
@@ -40,13 +60,6 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "private, no-store, max-age=0" },
           { key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'" },
           { key: "X-Robots-Tag", value: "noindex" },
-        ],
-      },
-      {
-        source: "/sw.js",
-        headers: [
-          { key: "Cache-Control", value: "no-cache, max-age=0" },
-          { key: "Service-Worker-Allowed", value: "/" },
         ],
       },
     ];

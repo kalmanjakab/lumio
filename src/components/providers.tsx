@@ -140,10 +140,6 @@ function InstallProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
-    // Service worker regisztrálása (csak éles buildben, hogy fejlesztéskor ne zavarjon).
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
-    }
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);

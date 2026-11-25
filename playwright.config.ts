@@ -3,6 +3,8 @@ import { hashSync } from "@node-rs/argon2";
 
 const PORT = 3100;
 export const ADMIN_TEST_PASSWORD = "e2e-admin-jelszo-123456";
+// Csak a helyi tesztszerverhez kitalált kulcs, élesben nem létezik.
+export const IMPORT_TEST_KEY = "e2e-import-kulcs-csak-tesztre-0123456789abcdef";
 const TEST_DB = process.env.E2E_DATABASE_URL || "postgres://flashly:flashly@localhost:5432/flashly_test";
 
 // A tesztszerver saját, eldobható adatbázist és csak tesztre generált admin hash-t kap.
@@ -23,8 +25,8 @@ export default defineConfig({
     locale: "hu-HU",
   },
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: /security|desktop/ },
-    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testMatch: /security|desktop/ },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: /security|desktop|api-import/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testMatch: /security|desktop|api-import/ },
   ],
   webServer: {
     command: `npx next start -p ${PORT}`,
@@ -37,6 +39,7 @@ export default defineConfig({
       ADMIN_PASSWORD_HASH: adminHash,
       ADMIN_PATH_SLUG: "e2e-titkos-admin",
       FLASHLY_INSECURE_COOKIES: "1",
+      IMPORT_API_KEY: IMPORT_TEST_KEY,
       NODE_ENV: "production",
     },
   },

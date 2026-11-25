@@ -4,6 +4,7 @@ Tanulókártya webapp (telepíthető PWA): **Kártyák**, **Tanulás**, **Teszt*
 
 - Éles cím (beállítás után): `https://flashly.vercel.app`
 - Biztonsági jelentés: [docs/BIZTONSAGI-JELENTES.md](docs/BIZTONSAGI-JELENTES.md)
+- Import API AI-agenteknek: [docs/IMPORT-API.md](docs/IMPORT-API.md)
 
 ## Technológia röviden
 
@@ -27,6 +28,7 @@ Minden ingyenes: Vercel Hobby csomag + Neon ingyenes csomag.
 | `SESSION_SECRET` | hosszú véletlen szöveg, ezzel írja alá a szerver a vendég-sütiket | a hash-generátor oldalon: „Titok generálása” |
 | `ADMIN_PASSWORD_HASH` | az admin jelszó hash-e (base64) | a hash-generátor oldalon: „Hash készítése” |
 | `ADMIN_PATH_SLUG` | az admin oldal titkos útvonala | nem kötelező, alapból `jakab-admin-page-do-not-touch` (kisbetű, szám, kötőjel, min. 8 karakter) |
+| `IMPORT_API_KEY` | az import API kulcsa (AI-agentek ezzel töltenek fel készletet) | nem kötelező; a hash-generátor oldalon: „API-kulcs generálása”. Ha nincs beállítva, az API ki van kapcsolva. |
 
 A `BLOB_READ_WRITE_TOKEN` **nem kell**, mert a profilképek az adatbázisban vannak.
 
@@ -67,7 +69,7 @@ Utána minden push a `main` ágra automatikusan települ.
 - **Vendégként** azonnal használható: nyilvános készletek, és a csoportok jelszóval megnyithatók ezen az eszközön. A haladás a böngészőben marad.
 - **Fiókkal** (felhasználónév + jelszó, e-mail nélkül) a haladás, a csillagok, a csoportok és a teszteredmények minden eszközön megmaradnak. Regisztrációkor a vendégként elért haladás átkerül a fiókba.
 - **Készlet oldal**: kártya-előnézet, a négy mód, „Csak a csillagozott kártyák” kapcsoló, kártyalista felolvasással és csillaggal.
-- **Kártyák**: koppintásra fordul, jobbra húzás = tudom, balra = még tanulom (vagy a pipa és X gombokkal; gépen nyilakkal és szóközzel). Visszavonás, tipp, beállítások a fogaskerékkel.
+- **Kártyák**: koppintásra fordul. Jobbra húzás: tudom, balra húzás: még tanulom. Átlósan húzva is működik, ujjal és egérrel is; kevés húzásnál a kártya visszaugrik. A pipa és az X gomb is használható, gépen a nyilak és a szóköz is. Visszavonás, tipp, beállítások a fogaskerékkel.
 - **Tanulás**: 7 kártyás körök. Minden kártya feleletválasztós, majd írásos kérdésen megy át. A hibás kártya hamarabb visszajön. „Nem tudom”, „Mégis jó volt”, körök végén összegző.
 - **Teszt**: beállítod a kérdések számát és típusát, a végén százalék, 1–5 osztályzat és kérdésenkénti javítás. A hibás kártyákat egy gombbal a Tanulásba viheted.
 - **Párosítás**: 12 csempe, minél gyorsabban. A rossz pár +1 másodperc, a legjobb időd mentődik.
@@ -82,6 +84,17 @@ Utána minden push a `main` ágra automatikusan települ.
 - Párosítás Szó/Jelentés kapcsoló: ha csak az egyik be van kapcsolva, azzal az oldallal kell kezdeni a párosítást.
 - Osztályzat-küszöbök: „85% fölött” = legalább 85%.
 - Navigáció: mobilon 4 fül (Főoldal, Könyvtár, Csoportok, Beállítások), asztali gépen oldalsáv és jobb felső fiókmenü.
+
+## Import API (AI-agenteknek)
+
+`POST /api/v1/sets`, Bearer kulccsal: egy külső agent (például egy Claude Skill) JSON-ban küld egy készletet, és az azonnal megjelenik az appban. A részletek és a példák: [docs/IMPORT-API.md](docs/IMPORT-API.md).
+
+## Frissítés és verzió
+
+- Minden deploymentnek saját build-azonosítója van (commit + build ideje). Ebből lesz a service worker verziója és a Beállítások alján látható verziószám is.
+- A telepített app (és a böngészős lap is) 10 percenként, valamint minden előtérbe kerüléskor megnézi, van-e új verzió. Ha van, az új service worker magától települ és átveszi az irányítást, az app pedig újratölt. Ehhez nem kell gombot nyomni.
+- Az újratöltés úgy történik, hogy ne vesszen el adat. Tanulás közben, gépelés közben, mentetlen admin-szerkesztés, illetve teszt vagy párosítás közben az app nem tölt újra a felhasználó szeme láttára. Ilyenkor oldalváltáskor vagy háttérbe kerüléskor frissül (a teszt, a párosítás és a mentetlen szerkesztés csak kilépéskor).
+- A régi gyorsítótárak maguktól törlődnek. Az előző verzió gyorsítótára egy ideig még megmarad, hogy az épp átváltó lap ne akadjon el.
 
 ## Ismert korlátok
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useAutoReloadBlocker } from "@/lib/client/app-update";
 import { Shapes, Trophy } from "lucide-react";
 import type { CardDTO, MaterialDTO, StudyData } from "@/lib/study-types";
 import { useStudyData } from "@/lib/client/study-store";
@@ -35,6 +36,8 @@ function fmt(ms: number) {
 
 export function MatchMode({ material, cards: allCards, serverData }: { material: MaterialDTO; cards: CardDTO[]; serverData: StudyData | null }) {
   const t = useTranslations("match");
+  // A folyamatban lévő kör nincs mentve, ezért itt az automatikus frissítés csak kilépéskor jöhet.
+  useAutoReloadBlocker(true);
   const ts = useTranslations("set");
   const toast = useToast();
   const { viewer, settings: user } = useSettings();

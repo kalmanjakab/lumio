@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useAutoReloadBlocker } from "@/lib/client/app-update";
 import { ChevronLeft, ChevronRight, FileCheck2, LayoutGrid, Minus, Plus, X, Check } from "lucide-react";
 import type { CardDTO, MaterialDTO, StudyData, TestQuestionDetail } from "@/lib/study-types";
 import type { GradeThresholds } from "@/lib/db/schema";
@@ -26,6 +27,8 @@ type Phase = "setup" | "running" | "results";
 
 export function TestMode({ material, cards: allCards, serverData, thresholds }: { material: MaterialDTO; cards: CardDTO[]; serverData: StudyData | null; thresholds: GradeThresholds }) {
   const t = useTranslations("test");
+  // A folyamatban lévő kör nincs mentve, ezért itt az automatikus frissítés csak kilépéskor jöhet.
+  useAutoReloadBlocker(true);
   const ts = useTranslations("set");
   const tc = useTranslations("common");
   const router = useRouter();

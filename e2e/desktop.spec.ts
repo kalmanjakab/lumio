@@ -121,6 +121,43 @@ test.describe("Asztali kezelés", () => {
     await expect(page.getByText("2 / 7")).toBeVisible();
   });
 
+  test("Kártyák egérrel húzva: jobbra tudom, balra nem tudom, kevés húzás visszarugózik", async ({ page }) => {
+    const s = seed();
+    await page.goto(`/sets/${s.publicSetId}/flashcards`);
+    await expect(page.getByText("1 / 7")).toBeVisible();
+    const box = (await page.getByTestId("flashcard").boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const drag = async (dx: number, dy: number) => {
+      await page.mouse.move(cx, cy);
+      await page.mouse.down();
+      for (let i = 1; i <= 10; i++) await page.mouse.move(cx + (dx * i) / 10, cy + (dy * i) / 10);
+      return async () => {
+        await page.mouse.up();
+        await page.waitForTimeout(400);
+      };
+    };
+    // Kevés húzás: nincs válasz, a kártya nem fordul meg.
+    let release = await drag(40, 0);
+    await release();
+    await expect(page.getByText("1 / 7")).toBeVisible();
+    await expect(page.locator(".flip-inner.is-flipped")).toHaveCount(0);
+    // Átlósan jobbra-fel: tudom (közben látszik a visszajelzés).
+    release = await drag(260, -120);
+    await expect(page.getByTestId("swipe-feedback")).toHaveAttribute("data-intent", "known");
+    await release();
+    await expect(page.getByText("2 / 7")).toBeVisible();
+    await expect(page.getByLabel("Tudom: 1")).toBeVisible();
+    // Balra: még tanulom.
+    release = await drag(-260, 0);
+    await release();
+    await expect(page.getByText("3 / 7")).toBeVisible();
+    await expect(page.getByLabel("Még tanulom: 1")).toBeVisible();
+    // A gombok továbbra is működnek.
+    await page.getByRole("button", { name: "Tudom", exact: true }).click();
+    await expect(page.getByText("4 / 7")).toBeVisible();
+  });
+
   test("Tanulás billentyűzettel: számgombbal választ, Enterrel továbblép", async ({ page }) => {
     const s = seed();
     await page.goto(`/sets/${s.publicSetId}/learn`);

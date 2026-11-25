@@ -108,6 +108,35 @@ test.describe("Tanulási módok", () => {
     await expect(page.getByText("1 / 2")).toBeVisible();
   });
 
+  test("Kártyák érintéssel: átlós húzás válaszol, függőleges nem", async ({ page }) => {
+    const s = seed();
+    await page.goto(`/sets/${s.publicSetId}/flashcards`);
+    await expect(page.getByText("1 / 7")).toBeVisible();
+    const box = (await page.getByTestId("flashcard").boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const cdp = await page.context().newCDPSession(page);
+    const touch = async (dx: number, dy: number) => {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: cx, y: cy }] });
+      for (let i = 1; i <= 12; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: cx + (dx * i) / 12, y: cy + (dy * i) / 12 }] });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(450);
+    };
+    await touch(0, -150);
+    await expect(page.getByText("1 / 7")).toBeVisible();
+    await touch(170, -110);
+    await expect(page.getByText("2 / 7")).toBeVisible();
+    await expect(page.getByLabel("Tudom: 1")).toBeVisible();
+    await touch(-170, -60);
+    await expect(page.getByText("3 / 7")).toBeVisible();
+    await expect(page.getByLabel("Még tanulom: 1")).toBeVisible();
+    // Koppintás továbbra is fordít.
+    await page.locator('button[data-card="1"]').first().tap();
+    await expect(page.locator(".flip-inner.is-flipped")).toHaveCount(1);
+  });
+
   test("Tanulás: végig helyes válaszokkal minden kártya elsajátítva", async ({ page }) => {
     const s = seed();
     await page.goto(`/sets/${s.publicSetId}/learn`);

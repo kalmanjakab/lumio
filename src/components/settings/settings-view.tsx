@@ -41,7 +41,7 @@ function Row({ children, onClick, danger, icon }: { children: React.ReactNode; o
   );
 }
 
-export function SettingsView({ groups, version }: { groups: Group[]; version: string }) {
+export function SettingsView({ groups }: { groups: Group[] }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
   const tg = useTranslations("groups");
@@ -240,16 +240,14 @@ export function SettingsView({ groups, version }: { groups: Group[]; version: st
             {t("install")}
           </Row>
         )}
-        <div className="flex items-center justify-between py-3.5">
-          <span className="font-medium">{t("version")}</span>
-          <span className="text-sm tabular-nums text-muted">{version}</span>
-        </div>
         <Link href="/settings/privacy" className="flex items-center gap-3 py-3.5 font-medium">
           <ShieldCheck className="size-5 text-muted" aria-hidden />
           <span className="flex-1">{t("privacy")}</span>
           <ChevronRight className="size-4 text-muted" aria-hidden />
         </Link>
       </Section>
+
+      <AppVersion label={t("version")} />
 
       {viewer.kind === "user" ? (
         <>
@@ -500,5 +498,20 @@ function DeleteAccountSheet({ open, onClose }: { open: boolean; onClose: () => v
         </Button>
       </form>
     </Sheet>
+  );
+}
+
+/** Az éppen futó build verziója (a buildbe égetve, így mindig a ténylegesen futó kódot mutatja). */
+function AppVersion({ label }: { label: string }) {
+  const version = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0";
+  const commit = process.env.NEXT_PUBLIC_COMMIT || "";
+  const built = process.env.NEXT_PUBLIC_BUILD_TIME || "";
+  const stamp = built ? `${built.slice(0, 10)} ${built.slice(11, 16)} UTC` : "";
+  const details = [commit, stamp].filter(Boolean).join(" · ");
+  return (
+    <p data-testid="app-version" data-build={process.env.NEXT_PUBLIC_BUILD_ID} className="mt-10 border-t border-border pb-2 pt-4 text-center text-xs tabular-nums text-muted">
+      {label}: {version}
+      {details ? <span className="block opacity-80">{details}</span> : null}
+    </p>
   );
 }
