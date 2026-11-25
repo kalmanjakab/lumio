@@ -31,7 +31,8 @@
     "of": "{current} / {total}",
     "percent": "{value}%",
     "minutesSeconds": "{m} p {s} mp",
-    "seconds": "{s} mp"
+    "seconds": "{s} mp",
+    "materials": "{count, plural, one {# anyag} other {# anyag}}"
   },
   "nav": {
     "home": "Főoldal",
@@ -161,7 +162,8 @@
     "previousCard": "Előző kártya",
     "nextCard": "Következő kártya",
     "progressMastered": "{count} elsajátítva",
-    "empty": "Ebben a készletben még nincs kártya."
+    "empty": "Ebben a készletben még nincs kártya.",
+    "testSummary": "{percent}% · {grade}-es"
   },
   "sheet": {
     "general": "Általános",
