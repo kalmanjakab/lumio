@@ -329,7 +329,9 @@
     "instantWrong": "Nem jó. A helyes válasz:",
     "allCorrect": "Minden válaszod helyes!",
     "pastResult": "Teszt eredménye",
-    "exit": "Kilépés a tesztből"
+    "exit": "Kilépés a tesztből",
+    "exitConfirm": "Biztosan kilépsz? Ennek a tesztnek az eredménye nem mentődik.",
+    "notFound": "Ez a teszteredmény nem található ezen az eszközön."
   },
   "match": {
     "title": "Párosítás",
