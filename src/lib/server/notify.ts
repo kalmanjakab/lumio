@@ -21,6 +21,7 @@ export type NotificationKind =
   | "assignmentDue"
   | "milestone"
   | "freezeUsed"
+  | "aiEnabled"
   | "test";
 
 // ---------- VAPID (a push üzenetek aláírókulcsa) ----------

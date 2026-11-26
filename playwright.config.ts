@@ -42,6 +42,8 @@ export default defineConfig({
       // Csak a helyi tesztszerverhez kitalált érték.
       CRON_SECRET: "e2e-cron-titok-csak-tesztre-0123456789",
       IMPORT_API_KEY: IMPORT_TEST_KEY,
+      // Kitalált, nem létező kulcs: az AI „be van állítva”, de a valódi Groq hívás a tesztben nem megy ki sikeresen.
+      GROQ_API_KEY: "e2e-groq-hamis-kulcs-csak-tesztre-0123456789",
       NODE_ENV: "production",
     },
   },

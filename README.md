@@ -33,7 +33,8 @@ Minden ingyenes: Vercel Hobby csomag + Neon ingyenes csomag.
 | `VAPID_PRIVATE_KEY` | a push értesítések titkos kulcsa (a fenti párja) | ugyanott, ugyanazzal a gombbal. Titkos. |
 | `VAPID_SUBJECT` | kapcsolattartó cím a push szolgáltatóknak | nem kötelező; pl. `https://flashly.vercel.app` vagy `mailto:valaki@pelda.hu` |
 | `CRON_SECRET` | az óránkénti időzített futás (emlékeztetők) védelme | a hash-generátor oldalon a „Kulcsok generálása” adja. A Vercel automatikusan elküldi a cron hívásokkal. Nélküle nem mennek ki időzített emlékeztetők. |
-| `ANTHROPIC_API_KEY` | az AI magyarázat kulcsa (Claude) | nem kötelező; a console.anthropic.com oldalon készíted. Nélküle a „Magyarázd el” gomb nem jelenik meg. Fizetős: felhasználónként óránként 40, naponta 150 kérés a korlát. |
+| `GROQ_API_KEY` | az AI funkciók kulcsa (Groq) | nem kötelező; a console.groq.com oldalon készíted. Nélküle az AI senkinél nem működik. Az AI-t ezen felül felhasználónként az admin kapcsolja be (Admin → Felhasználók → „AI” kapcsoló). Korlát: felhasználónként 20 kérés / 24 óra. |
+| `GROQ_MODEL` | melyik Groq modell válaszoljon | nem kötelező; alapból `openai/gpt-oss-120b`, ha az nem elérhető, `llama-3.3-70b-versatile`. |
 
 A `BLOB_READ_WRITE_TOKEN` **nem kell**, mert a profilképek az adatbázisban vannak.
 
@@ -93,7 +94,11 @@ Utána minden push a `main` ágra automatikusan települ.
 - **Értesítések**: a harang ikonnál az appon belül, és ha bekapcsolod (Beállítások → Értesítések), push üzenetként is: esti sorozat-figyelmeztetés, napi emlékeztető a választott órában, ritka visszahívó üzenet 3, 7, 14 és 30 nap kihagyás után, vasárnapi heti összefoglaló, új feladat és határidő. Este 10 és reggel 8 között nem megy ki semmi, és naponta legfeljebb 2 emlékeztető. iPhone-on előbb a kezdőképernyőre kell tenni az appot.
 - **Saját készletek**: fiókkal a Könyvtár „Sajátjaim” fülén készíthetsz saját készletet, vagy bármelyik látható készletet lemásolhatod magadnak. A saját készletet csak te látod.
 - **Offline**: nyilvános vagy saját készlet oldalán az „Offline mentés” gombbal elmented. Internet nélkül az app egy offline oldalt mutat, ahol a mentett készleteket kártyázhatod. Amit offline tanulsz, az a mai célba beszámít, amikor újra van net. Kijelentkezéskor az offline mentések törlődnek az eszközről.
-- **AI magyarázat** (ha be van állítva): hibás válasz után a „Magyarázd el” gomb rövid magyarázatot ad, és megmondja, a beírt válaszod elfogadható volt-e.
+- **AI funkciók** (csak akinek az admin bekapcsolta, és ha a `GROQ_API_KEY` be van állítva):
+  - hibás válasz után a „Magyarázd el” gomb rövid magyarázatot ad, és megmondja, a beírt válaszod elfogadható volt-e;
+  - „Memóriatrükk” bármelyik kártyához (a készlet oldalán a villanykörte ikon, és hibás válasz után);
+  - „AI tanulási tippek” a készlet oldalán: a legtöbbször elrontott kártyáid alapján ad tanácsot.
+  - Bekapcsoláskor a felhasználó értesítést kap, és a következő belépéskor egy bemutató ablakot. Az admin a Felhasználók oldalon látja, ki hány AI hívást küldött az elmúlt 7 napban és 24 órában.
 - **Beállítások**: profilkép (feltöltés vagy avatar), jelszócsere, csoportok kezelése, téma, hang, nyelv, tanulási alapbeállítások, telepítés, adatvédelem, fióktörlés.
 - **Telepítés**: Androidon a megjelenő „Telepítés” sávval. iPhone-on: Safari → Megosztás → Főképernyőhöz adás.
 

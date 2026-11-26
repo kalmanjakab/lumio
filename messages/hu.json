@@ -570,7 +570,9 @@
     "markAllRead": "Mind olvasott",
     "unread": "{count} olvasatlan",
     "open": "Értesítések megnyitása",
-    "guest": "Az értesítésekhez fiók kell."
+    "guest": "Az értesítésekhez fiók kell.",
+    "aiEnabledTitle": "Bekapcsoltuk az AI funkciókat",
+    "aiEnabledBody": "Mostantól AI magyarázatot, memóriatrükköket és tanulási tippeket kérhetsz."
   },
   "review": {
     "title": "Ismétlés",
@@ -727,7 +729,27 @@
     "verdict_partly": "a válaszod majdnem jó",
     "verdict_wrong": "a válaszod nem jó",
     "disclaimer": "Az AI tévedhet. Ha nem stimmel, a kártyán lévő válasz számít.",
-    "limit": "Elérted a mai AI-magyarázatok számát. Próbáld később.",
-    "failed": "Most nem sikerült magyarázatot kérni."
+    "limit": "Elfogyott a mai AI kereted (20 kérés / nap). Holnap újra használhatod.",
+    "failed": "Most nem sikerült választ kérni az AI-tól. Próbáld újra.",
+    "busy": "Az AI most túlterhelt. Próbáld újra egy perc múlva.",
+    "notAllowed": "Az AI funkciók nincsenek bekapcsolva a fiókodnál.",
+    "mnemonic": "Memóriatrükk",
+    "mnemonicTitle": "AI memóriatrükk",
+    "remaining": "Ma még {count} AI kérésed maradt.",
+    "tips": "AI tanulási tippek",
+    "tipsTitle": "Tanulási tippek ehhez a készlethez",
+    "tipsLoading": "Átnézem, mi megy és mi nehéz…",
+    "tipsHard": "A nehezebb kártyáidhoz",
+    "tipsAgain": "Új tippek kérése",
+    "welcomeTitle": "Bekapcsoltuk neked az AI funkciókat",
+    "welcomeIntro": "Mostantól egy AI segít a tanulásban. Ezt tudja:",
+    "welcomeExplainTitle": "Magyarázat hibás válasz után",
+    "welcomeExplainBody": "Tanulás és diktálás módban a „Magyarázd el” gomb megmondja, miért nem jó a válaszod, és ad egy példamondatot.",
+    "welcomeMnemonicTitle": "Memóriatrükk bármelyik kártyához",
+    "welcomeMnemonicBody": "A készlet oldalán a kártyák melletti villanykörte ikon egy könnyen megjegyezhető trükköt ad.",
+    "welcomeTipsTitle": "Személyre szabott tanulási tippek",
+    "welcomeTipsBody": "A készlet oldalán az „AI tanulási tippek” gomb megnézi, mely kártyák mennek nehezen, és tanácsot ad hozzájuk.",
+    "welcomeLimit": "Naponta {count} AI kérésed lehet. Az AI tévedhet, a kártyán lévő válasz számít.",
+    "welcomeOk": "Szuper, kipróbálom"
   }
 }

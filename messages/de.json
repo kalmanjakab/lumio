@@ -570,7 +570,9 @@
     "markAllRead": "Alle als gelesen markieren",
     "unread": "{count} ungelesen",
     "open": "Benachrichtigungen öffnen",
-    "guest": "Für Benachrichtigungen brauchst du ein Konto."
+    "guest": "Für Benachrichtigungen brauchst du ein Konto.",
+    "aiEnabledTitle": "KI-Funktionen aktiviert",
+    "aiEnabledBody": "Du kannst jetzt KI-Erklärungen, Merkhilfen und Lerntipps nutzen."
   },
   "review": {
     "title": "Wiederholen",
@@ -727,7 +729,27 @@
     "verdict_partly": "deine Antwort ist fast richtig",
     "verdict_wrong": "deine Antwort stimmt nicht",
     "disclaimer": "Die KI kann sich irren. Es zählt die Antwort auf der Karte.",
-    "limit": "Du hast das Limit für KI-Erklärungen erreicht. Versuch es später.",
-    "failed": "Gerade konnte keine Erklärung geladen werden."
+    "limit": "Dein KI-Kontingent für heute ist aufgebraucht (20 Anfragen pro Tag). Morgen geht es wieder.",
+    "failed": "Die KI konnte gerade nicht antworten. Versuch es noch einmal.",
+    "busy": "Die KI ist gerade ausgelastet. Versuch es in einer Minute erneut.",
+    "notAllowed": "KI-Funktionen sind für dein Konto nicht aktiviert.",
+    "mnemonic": "Merkhilfe",
+    "mnemonicTitle": "KI-Merkhilfe",
+    "remaining": "Heute {count, plural, one {noch # KI-Anfrage} other {noch # KI-Anfragen}} übrig.",
+    "tips": "KI-Lerntipps",
+    "tipsTitle": "Lerntipps für dieses Set",
+    "tipsLoading": "Ich schaue, was gut läuft und was schwer ist…",
+    "tipsHard": "Für deine schwierigeren Karten",
+    "tipsAgain": "Neue Tipps",
+    "welcomeTitle": "KI-Funktionen sind jetzt für dich aktiv",
+    "welcomeIntro": "Ab jetzt hilft dir eine KI beim Lernen. Das kann sie:",
+    "welcomeExplainTitle": "Erklärungen nach falschen Antworten",
+    "welcomeExplainBody": "Im Lern- und Diktatmodus erklärt dir „Erklären“, warum deine Antwort falsch war, mit einem Beispielsatz.",
+    "welcomeMnemonicTitle": "Eine Merkhilfe für jede Karte",
+    "welcomeMnemonicBody": "Auf der Seite eines Sets gibt dir die Glühbirne neben jeder Karte eine einprägsame Eselsbrücke.",
+    "welcomeTipsTitle": "Persönliche Lerntipps",
+    "welcomeTipsBody": "Auf der Seite eines Sets schaut „KI-Lerntipps“, welche Karten dir schwerfallen, und gibt Tipps dazu.",
+    "welcomeLimit": "Du hast {count} KI-Anfragen pro Tag. Die KI kann sich irren; es zählt die Antwort auf der Karte.",
+    "welcomeOk": "Super, ausprobieren"
   }
 }

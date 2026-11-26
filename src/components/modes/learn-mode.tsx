@@ -31,7 +31,7 @@ import { Sheet, SheetGroup, ConfirmDialog } from "../sheet";
 import { Button, ProgressBar, Spinner, Switch, cn } from "../ui";
 import { useToast } from "../toast";
 import { GuestNudge } from "../home/guest-nudge";
-import { AiExplain } from "../ai-explain";
+import { AiExplain } from "../ai/ai-explain";
 import { ModeEmpty, ModeHeader } from "./mode-header";
 import { McOptions, PromptCard, WrittenInput, type OptionState, type WrittenInputHandle } from "./question-parts";
 

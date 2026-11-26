@@ -321,6 +321,42 @@ export function UserActions({ id, username }: { id: string; username: string }) 
   );
 }
 
+/** AI funkciók kapcsolója egy felhasználónál. */
+export function UserAiToggle({ id, username, enabled }: { id: string; username: string; enabled: boolean }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [on, setOn] = useState(enabled);
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold">
+      <input
+        type="checkbox"
+        role="switch"
+        aria-label={`AI: ${username}`}
+        className="size-4 accent-[var(--primary)]"
+        checked={on}
+        disabled={busy}
+        onChange={async (e) => {
+          const next = e.target.checked;
+          setOn(next);
+          setBusy(true);
+          try {
+            await api(`/api/admin/users/${id}`, { method: "PATCH", body: { aiEnabled: next } });
+            toast(next ? `AI bekapcsolva: ${username}. Értesítést kapott.` : `AI kikapcsolva: ${username}.`, "success");
+            router.refresh();
+          } catch (err) {
+            setOn(!next);
+            toast(errText(err), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+      AI
+    </label>
+  );
+}
+
 export function ThresholdInputs({ value, onChange }: { value: GradeThresholds; onChange: (v: GradeThresholds) => void }) {
   const fields: [keyof GradeThresholds, string][] = [
     ["g5", "5-ös, legalább (%)"],

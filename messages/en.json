@@ -570,7 +570,9 @@
     "markAllRead": "Mark all as read",
     "unread": "{count} unread",
     "open": "Open notifications",
-    "guest": "You need an account for notifications."
+    "guest": "You need an account for notifications.",
+    "aiEnabledTitle": "AI features are on",
+    "aiEnabledBody": "You can now get AI explanations, memory tricks and study tips."
   },
   "review": {
     "title": "Review",
@@ -727,7 +729,27 @@
     "verdict_partly": "your answer is nearly right",
     "verdict_wrong": "your answer isn't right",
     "disclaimer": "AI can be wrong. The card's answer is what counts.",
-    "limit": "You've reached the AI explanation limit for now. Try later.",
-    "failed": "Couldn't get an explanation right now."
+    "limit": "You've used today's AI allowance (20 requests per day). You can use it again tomorrow.",
+    "failed": "Couldn't get an answer from the AI right now. Try again.",
+    "busy": "The AI is busy right now. Try again in a minute.",
+    "notAllowed": "AI features aren't enabled for your account.",
+    "mnemonic": "Memory trick",
+    "mnemonicTitle": "AI memory trick",
+    "remaining": "{count, plural, one {# AI request} other {# AI requests}} left today.",
+    "tips": "AI study tips",
+    "tipsTitle": "Study tips for this set",
+    "tipsLoading": "Looking at what's going well and what's hard…",
+    "tipsHard": "For your harder cards",
+    "tipsAgain": "Get new tips",
+    "welcomeTitle": "AI features are now on for you",
+    "welcomeIntro": "From now on, an AI helps you learn. Here's what it can do:",
+    "welcomeExplainTitle": "Explanations after a wrong answer",
+    "welcomeExplainBody": "In Learn and Dictation, the \"Explain\" button tells you why your answer was wrong and gives an example sentence.",
+    "welcomeMnemonicTitle": "A memory trick for any card",
+    "welcomeMnemonicBody": "On a set's page, the light bulb next to each card gives you an easy-to-remember trick.",
+    "welcomeTipsTitle": "Personal study tips",
+    "welcomeTipsBody": "On a set's page, \"AI study tips\" looks at which cards you struggle with and gives advice for them.",
+    "welcomeLimit": "You have {count} AI requests per day. The AI can make mistakes; the answer on the card is what counts.",
+    "welcomeOk": "Great, let's try it"
   }
 }

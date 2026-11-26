@@ -14,7 +14,7 @@ import { useSettings } from "../providers";
 import { Sheet } from "../sheet";
 import { Button, ProgressBar, Segmented, Spinner, Switch, cn } from "../ui";
 import { CardImage } from "../card-image";
-import { AiExplain } from "../ai-explain";
+import { AiExplain } from "../ai/ai-explain";
 import { ModeEmpty, ModeHeader } from "./mode-header";
 import { WrittenInput, type WrittenInputHandle } from "./question-parts";
 

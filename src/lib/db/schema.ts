@@ -37,6 +37,10 @@ export const users = pgTable("users", {
   avatarVersion: integer("avatar_version").notNull().default(0),
   hasAvatarImage: boolean("has_avatar_image").notNull().default(false),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  // Az AI funkciókat az admin kapcsolja be felhasználónként (alapból ki).
+  aiEnabled: boolean("ai_enabled").notNull().default(false),
+  // Bekapcsolás után a következő belépéskor egy üdvözlő ablak jelenik meg.
+  aiWelcome: boolean("ai_welcome").notNull().default(false),
   createdAt: ts("created_at").notNull().defaultNow(),
   lastLoginAt: ts("last_login_at"),
 });
@@ -441,4 +445,18 @@ export const notifications = pgTable(
     uniqueIndex("notifications_dedupe_idx").on(t.userId, t.dedupeKey),
     index("notifications_user_created_idx").on(t.userId, t.createdAt),
   ],
+);
+
+// AI hívások naplója: a napi korláthoz és az admin heti statisztikájához. Szöveget nem tárol.
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    feature: text("feature").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("ai_usage_user_created_idx").on(t.userId, t.createdAt)],
 );

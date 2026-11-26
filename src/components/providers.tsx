@@ -6,6 +6,7 @@ import { DEFAULT_USER_SETTINGS, type UserSettings } from "@/lib/validation";
 import { readLocal, setCookie, writeLocal } from "@/lib/client/storage";
 import { api } from "@/lib/client/api";
 import { ToastProvider, useToast } from "./toast";
+import { AiWelcome } from "./ai/ai-welcome";
 import { useTranslations } from "next-intl";
 import { configureActivity, onActivityEvent, recordActivity, retryPendingActivity, setActivityGoal } from "@/lib/client/activity";
 import { takeOfflineActivity } from "@/lib/client/offline";
@@ -51,7 +52,7 @@ function ActivityBridge({ activity }: { activity: LayoutActivity }) {
 
 export type ClientViewer =
   | { kind: "guest" }
-  | { kind: "user"; username: string; avatarUrl: string | null; mustChangePassword: boolean };
+  | { kind: "user"; username: string; avatarUrl: string | null; mustChangePassword: boolean; ai: boolean; aiWelcome: boolean };
 
 type SettingsCtx = {
   settings: UserSettings;
@@ -217,6 +218,7 @@ export function AppProviders({
         <ToastProvider>
           <ActivityBridge activity={activity} />
           {children}
+          <AiWelcome />
         </ToastProvider>
       </InstallProvider>
     </SettingsProvider>

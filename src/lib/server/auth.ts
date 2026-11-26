@@ -24,6 +24,8 @@ export type SessionUser = {
   hasAvatarImage: boolean;
   avatarVersion: number;
   mustChangePassword: boolean;
+  aiEnabled: boolean;
+  aiWelcome: boolean;
 };
 
 export type GuestGrants = Record<string, number>; // groupId -> accessVersion
@@ -73,6 +75,8 @@ const loadSession = cache(async (token: string) => {
       hasAvatarImage: schema.users.hasAvatarImage,
       avatarVersion: schema.users.avatarVersion,
       mustChangePassword: schema.users.mustChangePassword,
+      aiEnabled: schema.users.aiEnabled,
+      aiWelcome: schema.users.aiWelcome,
     })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.users.id, schema.sessions.userId))

@@ -12,6 +12,8 @@ import { CardPreview } from "./card-preview";
 import { GuestNudge } from "../home/guest-nudge";
 import { SetOwnerActions } from "./own-set-actions";
 import { OfflineToggle } from "./offline-toggle";
+import { AiStudyTips } from "../ai/ai-study-tips";
+import { AiCardButton } from "../ai/ai-card-button";
 import { CardImage } from "../card-image";
 import { LevelBar, LevelDot } from "./level-bar";
 import { cardLevel, isDue, levelCounts } from "@/lib/srs";
@@ -93,6 +95,7 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
         <div className="mt-4 flex flex-wrap gap-2">
           <SetOwnerActions materialId={material.id} isOwn={material.isOwn} />
           <OfflineToggle material={material} cards={cards} />
+          {cards.length ? <AiStudyTips materialId={material.id} /> : null}
         </div>
       </header>
 
@@ -180,6 +183,7 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
                       </span>
                     </div>
                     <div className="-my-1 flex shrink-0 gap-1">
+                      <AiCardButton cardId={c.id} term={c.term} />
                       <button
                         type="button"
                         onClick={() => speak(c.term, material.termLang, { rate: settings.ttsRate, volume: settings.volume })}

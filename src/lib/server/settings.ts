@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { DEFAULT_USER_SETTINGS, LOCALES, userSettingsSchema, type Locale, type UserSettings } from "@/lib/validation";
 import { getViewer } from "./auth";
+import { aiConfigured } from "./ai";
 import type { ClientViewer } from "@/components/providers";
 
 export async function loadUserSettings(userId: string): Promise<UserSettings> {
@@ -38,5 +39,7 @@ export async function getClientViewer(): Promise<ClientViewer> {
     username: v.user.username,
     avatarUrl: avatarUrlFor(v.user),
     mustChangePassword: v.user.mustChangePassword,
+    ai: v.user.aiEnabled && aiConfigured(),
+    aiWelcome: v.user.aiEnabled && v.user.aiWelcome && aiConfigured(),
   };
 }

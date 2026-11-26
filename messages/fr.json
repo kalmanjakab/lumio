@@ -570,7 +570,9 @@
     "markAllRead": "Tout marquer comme lu",
     "unread": "{count} non lues",
     "open": "Ouvrir les notifications",
-    "guest": "Il faut un compte pour les notifications."
+    "guest": "Il faut un compte pour les notifications.",
+    "aiEnabledTitle": "Fonctions IA activées",
+    "aiEnabledBody": "Tu peux maintenant obtenir des explications, des astuces mémoire et des conseils IA."
   },
   "review": {
     "title": "Révision",
@@ -727,7 +729,27 @@
     "verdict_partly": "ta réponse est presque juste",
     "verdict_wrong": "ta réponse n'est pas juste",
     "disclaimer": "L'IA peut se tromper. C'est la réponse de la carte qui compte.",
-    "limit": "Tu as atteint la limite d'explications IA pour le moment. Réessaie plus tard.",
-    "failed": "Impossible d'obtenir une explication pour l'instant."
+    "limit": "Tu as utilisé ton quota IA du jour (20 requêtes par jour). Tu pourras le réutiliser demain.",
+    "failed": "Impossible d'obtenir une réponse de l'IA pour l'instant. Réessaie.",
+    "busy": "L'IA est surchargée. Réessaie dans une minute.",
+    "notAllowed": "Les fonctions IA ne sont pas activées pour ton compte.",
+    "mnemonic": "Astuce mémoire",
+    "mnemonicTitle": "Astuce mémoire IA",
+    "remaining": "{count, plural, one {# requête IA restante} other {# requêtes IA restantes}} aujourd'hui.",
+    "tips": "Conseils IA",
+    "tipsTitle": "Conseils pour cette série",
+    "tipsLoading": "J'analyse ce qui va bien et ce qui est difficile…",
+    "tipsHard": "Pour tes cartes difficiles",
+    "tipsAgain": "Nouveaux conseils",
+    "welcomeTitle": "Les fonctions IA sont activées pour toi",
+    "welcomeIntro": "Désormais, une IA t'aide à apprendre. Voici ce qu'elle sait faire :",
+    "welcomeExplainTitle": "Explications après une erreur",
+    "welcomeExplainBody": "En mode Apprendre et Dictée, le bouton « Explique » te dit pourquoi ta réponse est fausse et donne une phrase d'exemple.",
+    "welcomeMnemonicTitle": "Une astuce mémoire pour chaque carte",
+    "welcomeMnemonicBody": "Sur la page d'une série, l'ampoule à côté de chaque carte te donne une astuce facile à retenir.",
+    "welcomeTipsTitle": "Conseils personnalisés",
+    "welcomeTipsBody": "Sur la page d'une série, « Conseils IA » regarde les cartes qui te posent problème et te conseille.",
+    "welcomeLimit": "Tu as {count} requêtes IA par jour. L'IA peut se tromper ; c'est la réponse de la carte qui compte.",
+    "welcomeOk": "Super, j'essaie"
   }
 }

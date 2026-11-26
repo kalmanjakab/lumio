@@ -1,7 +1,9 @@
 import { request as pwRequest } from "@playwright/test";
-import { test, expect, ADMIN_PASSWORD, SEED, apiPost, randomIp, registerViaUi, seed, uniqueName } from "./helpers";
+import pg from "pg";
+import { test, expect, ADMIN_PASSWORD, ADMIN_SLUG, SEED, apiPost, randomIp, registerViaUi, seed, uniqueName } from "./helpers";
 
 const BASE = "http://localhost:3100";
+const TEST_DB = process.env.E2E_DATABASE_URL || "postgres://flashly:flashly@localhost:5432/flashly_test";
 const CRON = "e2e-cron-titok-csak-tesztre-0123456789";
 
 async function newUser(username = uniqueName("ft")) {
@@ -131,9 +133,79 @@ test.describe("Új funkciók", () => {
     expect(parses).toBe(true);
   });
 
-  test("AI magyarázat kulcs nélkül ki van kapcsolva", async () => {
+  test("AI: alapból ki, admin felhasználónként kapcsolja, értesítés, felugró ablak, napi 20-as korlát", async ({ page }) => {
+    const s = seed();
+    const db = new pg.Pool({ connectionString: TEST_DB, max: 1 });
+    try {
+      const username = uniqueName("ai");
+      await registerViaUi(page, username);
+      const { rows } = await db.query("select id from users where username = $1", [username]);
+      const uid = rows[0].id as string;
+
+      // Alapból nincs AI: a gombok nem látszanak, az API 403-at ad.
+      expect(await (await page.request.get("/api/ai/explain")).json()).toEqual({ enabled: false });
+      expect((await apiPost(page.request, BASE, "/api/ai/explain", { cardId: s.publicCardIds[0] })).status()).toBe(403);
+      expect((await apiPost(page.request, BASE, "/api/ai/tips", { materialId: s.publicSetId })).status()).toBe(403);
+      await page.goto(`/sets/${s.publicSetId}`);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.getByRole("button", { name: "AI tanulási tippek" })).toHaveCount(0);
+
+      // Admin bekapcsolja a felületen.
+      const adminCtx = await page.context().browser()!.newContext({ extraHTTPHeaders: { "x-real-ip": randomIp() } });
+      const adminPage = await adminCtx.newPage();
+      expect((await apiPost(adminCtx.request, BASE, "/api/admin/login", { password: ADMIN_PASSWORD })).status()).toBe(200);
+      await adminPage.goto(`/${ADMIN_SLUG}/users`);
+      await expect(adminPage.getByTestId(`ai-usage-${username}`)).toContainText("0 az elmúlt 7 napban");
+      await adminPage.getByRole("switch", { name: `AI: ${username}` }).check();
+      await expect(adminPage.getByText(`AI bekapcsolva: ${username}`)).toBeVisible();
+
+      // Következő belépéskor felugró ablak + értesítés.
+      await page.goto("/");
+      const dialog = page.getByRole("dialog", { name: "Bekapcsoltuk neked az AI funkciókat" });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Szuper, kipróbálom" }).click();
+      await expect(dialog).toBeHidden();
+      const notif = await db.query("select kind from notifications where user_id = $1 and kind = 'aiEnabled'", [uid]);
+      expect(notif.rowCount).toBe(1);
+      await page.reload();
+      await expect(page.getByRole("dialog", { name: "Bekapcsoltuk neked az AI funkciókat" })).toHaveCount(0);
+
+      // A gombok megjelennek.
+      expect(await (await page.request.get("/api/ai/explain")).json()).toEqual({ enabled: true });
+      await page.goto(`/sets/${s.publicSetId}`);
+      await expect(page.getByRole("button", { name: "AI tanulási tippek" })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Memóriatrükk:/ }).first()).toBeVisible();
+
+      // Egy hívás (a hamis kulcs miatt a Groq nem válaszol), de a keretből levonódik és az admin látja.
+      const r = await apiPost(page.request, BASE, "/api/ai/mnemonic", { cardId: s.publicCardIds[0] });
+      expect([502, 503]).toContain(r.status());
+      const st = await (await page.request.get("/api/ai/status")).json();
+      expect(st).toMatchObject({ enabled: true, limit: 20, remaining: 19 });
+      await adminPage.reload();
+      await expect(adminPage.getByTestId(`ai-usage-${username}`)).toContainText("1 az elmúlt 7 napban · 1/20");
+
+      // Napi 20 kérés után 429.
+      await db.query("insert into ai_usage (user_id, feature) select $1, 'explain' from generate_series(1, 19)", [uid]);
+      const over = await apiPost(page.request, BASE, "/api/ai/explain", { cardId: s.publicCardIds[0] });
+      expect(over.status()).toBe(429);
+      expect((await over.json()).error).toBe("ai_daily_limit");
+
+      // Kikapcsolás után újra 403.
+      await adminPage.getByRole("switch", { name: `AI: ${username}` }).uncheck();
+      await expect(adminPage.getByText(`AI kikapcsolva: ${username}`)).toBeVisible();
+      expect((await apiPost(page.request, BASE, "/api/ai/explain", { cardId: s.publicCardIds[0] })).status()).toBe(403);
+      await adminCtx.close();
+    } finally {
+      await db.end();
+    }
+  });
+
+  test("AI: más felhasználó nem kapcsolhatja magának, vendég nem éri el", async () => {
     const u = await newUser();
+    expect((await apiPost(u.ctx, BASE, "/api/admin/users/00000000-0000-0000-0000-000000000000", { aiEnabled: true }, "PATCH")).status()).toBe(401);
+    await apiPost(u.ctx, BASE, "/api/me/settings", { aiEnabled: true, aiWelcome: true }, "PATCH");
     expect(await (await u.ctx.get("/api/ai/explain")).json()).toEqual({ enabled: false });
-    expect((await apiPost(u.ctx, BASE, "/api/ai/explain", { cardId: seed().publicCardIds[0] })).status()).toBe(503);
+    const guest = await pwRequest.newContext({ baseURL: BASE });
+    expect((await apiPost(guest, BASE, "/api/ai/explain", { cardId: seed().publicCardIds[0] })).status()).toBe(401);
   });
 });
