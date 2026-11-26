@@ -134,6 +134,7 @@ export function TestMode({ material, cards: allCards, serverData, thresholds }: 
     setResult(r);
     setPhase("results");
     if (user.soundEffects) playSound("finish", user.volume);
+    store.recordActivity(r.total);
     await store.saveTestResult({ correct: r.correct, total: r.total, percent: r.percent, grade: r.grade, durationMs, details: { questions: details } });
   };
 
@@ -312,6 +313,7 @@ export function TestMode({ material, cards: allCards, serverData, thresholds }: 
           label={q.answerSide === "term" ? tc("definition") : tc("term")}
           text={q.prompt}
           lang={promptLang}
+          imageId={q.answerSide === "term" ? cards.find((c) => c.id === q.cardId)?.imageId : null}
           onSpeak={() => speak(q.prompt, promptLang, { rate: user.ttsRate, volume: user.volume })}
         />
 

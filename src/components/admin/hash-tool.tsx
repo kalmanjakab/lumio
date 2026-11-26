@@ -20,6 +20,17 @@ function randomSecret() {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+// VAPID kulcspár (P-256) a push értesítésekhez, szintén csak a böngészőben.
+async function makeVapid() {
+  const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
+  const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey);
+  if (!jwk.d || pub.length !== 65) throw new Error("bad key");
+  return { publicKey: b64url(pub), privateKey: jwk.d };
+}
+
 function CopyBox({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -51,7 +62,7 @@ function SkillDownload({ files }: { files: { path: string; content: string }[] }
   const [done, setDone] = useState(false);
   return (
     <section className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-card">
-      <h2 className="font-bold">4. Claude skill letöltése (az import API-hoz)</h2>
+      <h2 className="font-bold">5. Claude skill letöltése (az import API-hoz)</h2>
       <p className="text-sm text-muted">
         Másold be ide ugyanazt a kulcsot, amit a Vercelen az IMPORT_API_KEY-be tettél. A skill a böngésződben áll össze, a kulcs nem megy el a szerverre. A letöltött ZIP-et a Claude appban a Beállítások → Képességek → Skillek részen töltsd fel.
       </p>
@@ -96,6 +107,8 @@ export function HashTool({ skillFiles = [] }: { skillFiles?: { path: string; con
   const [hash, setHash] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [vapid, setVapid] = useState<{ publicKey: string; privateKey: string } | null>(null);
+  const [cronSecret, setCronSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -163,6 +176,34 @@ export function HashTool({ skillFiles = [] }: { skillFiles?: { path: string; con
           API-kulcs generálása
         </Button>
         {apiKey ? <CopyBox label="Ezt másold be a Vercelen az IMPORT_API_KEY értékének (és az agentnek):" value={apiKey} /> : null}
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-card">
+        <h2 className="font-bold">4. Push értesítések → VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, CRON_SECRET</h2>
+        <p className="text-sm text-muted">
+          A telefonos/asztali értesítésekhez kell. A kulcspárral írja alá a szerver az üzeneteket, a CRON_SECRET pedig védi az óránkénti időzített futást. Csak egyszer állítsd be: ha később
+          új kulcspárt készítesz, mindenkinek újra be kell kapcsolnia az értesítéseket. Opcionális még a VAPID_SUBJECT (pl. https://flashly.vercel.app vagy mailto:cím).
+        </p>
+        <Button
+          variant="soft"
+          onClick={async () => {
+            try {
+              setVapid(await makeVapid());
+              setCronSecret(randomSecret());
+            } catch {
+              setErr("Ez a böngésző nem tud kulcspárt készíteni.");
+            }
+          }}
+        >
+          Kulcsok generálása
+        </Button>
+        {vapid ? (
+          <>
+            <CopyBox label="VAPID_PUBLIC_KEY:" value={vapid.publicKey} />
+            <CopyBox label="VAPID_PRIVATE_KEY (titkos):" value={vapid.privateKey} />
+          </>
+        ) : null}
+        {cronSecret ? <CopyBox label="CRON_SECRET (titkos):" value={cronSecret} /> : null}
       </section>
 
       <SkillDownload files={skillFiles} />

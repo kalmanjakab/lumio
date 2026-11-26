@@ -10,14 +10,16 @@ import { EmptyState, cn } from "../ui";
 import { api } from "@/lib/client/api";
 import { readGuestRecent, readGuestStarredAll, readGuestTestsAll } from "@/lib/client/study-store";
 import { speak } from "@/lib/client/tts";
+import { NewSetButton } from "../set/own-set-actions";
 
 type Starred = { id: string; term: string; definition: string; materialId: string; materialTitle: string; termLang: string; definitionLang: string };
 type Recent = { materialId: string; title: string; cardCount: number };
 type TestItem = { id: string; materialId: string; materialTitle: string; percent: number; grade: number; createdAt: string };
 type Group = { id: string; name: string; materialCount: number | null };
 
-const TABS = ["groups", "starred", "recent", "tests"] as const;
-type Tab = (typeof TABS)[number];
+const TABS = ["groups", "mine", "starred", "recent", "tests"] as const;
+export type LibraryTab = (typeof TABS)[number];
+type Tab = LibraryTab;
 
 export function LibraryView({
   groups,
@@ -25,7 +27,11 @@ export function LibraryView({
   serverStarred,
   serverRecent,
   serverTests,
+  mySets,
+  initialTab,
 }: {
+  mySets: { id: string; title: string; cardCount: number }[] | null;
+  initialTab?: Tab;
   groups: Group[];
   materials: { id: string; title: string; cardCount: number }[];
   serverStarred: Starred[] | null;
@@ -37,7 +43,7 @@ export function LibraryView({
   const ts = useTranslations("set");
   const format = useFormatter();
   const { settings } = useSettings();
-  const [tab, setTab] = useState<Tab>("groups");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "groups");
   const [starred, setStarred] = useState<Starred[] | null>(serverStarred);
   const [recent, setRecent] = useState<Recent[] | null>(serverRecent);
   const [tests, setTests] = useState<TestItem[] | null>(serverTests);
@@ -77,7 +83,7 @@ export function LibraryView({
     }
   }, [materials, serverRecent, serverStarred, serverTests]);
 
-  const tabLabel: Record<Tab, string> = { groups: t("tabGroups"), starred: t("tabStarred"), recent: t("tabRecent"), tests: t("tabTests") };
+  const tabLabel: Record<Tab, string> = { groups: t("tabGroups"), mine: t("tabMine"), starred: t("tabStarred"), recent: t("tabRecent"), tests: t("tabTests") };
 
   return (
     <div>
@@ -110,6 +116,34 @@ export function LibraryView({
                 </li>
               ))}
             </ul>
+          )
+        ) : null}
+
+        {tab === "mine" ? (
+          mySets === null ? (
+            <EmptyState>
+              {t("mineGuest")}{" "}
+              <Link href="/login?next=%2Flibrary%3Ftab%3Dmine" className="font-semibold text-primary hover:underline">
+                {t("mineLogin")}
+              </Link>
+            </EmptyState>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div>
+                <NewSetButton size="sm" />
+              </div>
+              {mySets.length === 0 ? (
+                <EmptyState>{t("noMine")}</EmptyState>
+              ) : (
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  {mySets.map((m) => (
+                    <li key={m.id}>
+                      <MaterialRow href={`/sets/${m.id}`} title={m.title} meta={tc("cards", { count: m.cardCount })} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )
         ) : null}
 

@@ -3,25 +3,33 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
-import { Layers, RefreshCcw, FileCheck2, Shapes, Star, Volume2, Globe, Users } from "lucide-react";
+import { Layers, RefreshCcw, FileCheck2, Shapes, Star, Volume2, Globe, Users, UserRound, CalendarClock, Ear } from "lucide-react";
 import type { CardDTO, MaterialDTO, StudyData, TestResultRecord } from "@/lib/study-types";
 import { useStudyData } from "@/lib/client/study-store";
 import { speak } from "@/lib/client/tts";
 import { useSettings } from "../providers";
 import { CardPreview } from "./card-preview";
 import { GuestNudge } from "../home/guest-nudge";
+import { SetOwnerActions } from "./own-set-actions";
+import { OfflineToggle } from "./offline-toggle";
+import { CardImage } from "../card-image";
+import { LevelBar, LevelDot } from "./level-bar";
+import { cardLevel, isDue, levelCounts } from "@/lib/srs";
 import { Switch, cn } from "../ui";
 
 const MODES = [
+  { key: "review", icon: CalendarClock },
   { key: "flashcards", icon: Layers },
   { key: "learn", icon: RefreshCcw },
   { key: "test", icon: FileCheck2 },
   { key: "match", icon: Shapes },
+  { key: "dictation", icon: Ear },
 ] as const;
 
 export function SetView({ material, cards, serverData }: { material: MaterialDTO; cards: CardDTO[]; serverData: StudyData | null }) {
   const t = useTranslations("set");
   const tc = useTranslations("common");
+  const tr = useTranslations("review");
   const format = useFormatter();
   const { viewer, settings } = useSettings();
   const { data, store } = useStudyData(viewer.kind, material.id, serverData);
@@ -35,7 +43,12 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
   }, [data]);
 
   const visible = useMemo(() => (starredOnly ? cards.filter((c) => starred.has(c.id)) : cards), [cards, starred, starredOnly]);
-  const mastered = useMemo(() => Object.values(data?.progress ?? {}).filter((p) => p.level >= 3).length, [data]);
+  const counts = useMemo(() => levelCounts(cards.map((c) => c.id), data?.srs ?? {}, data?.progress ?? {}), [cards, data]);
+  const mastered = counts.mastered;
+  const dueCount = useMemo(() => {
+    const now = Date.now();
+    return cards.filter((c) => isDue(data?.srs?.[c.id], now)).length;
+  }, [cards, data]);
   const tests: TestResultRecord[] = data?.tests ?? [];
 
   const toggleStar = (id: string) => {
@@ -54,7 +67,11 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
       <header className="mb-6">
         <h1 className="text-2xl font-extrabold sm:text-3xl">{material.title}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-          {material.groupId ? (
+          {material.isOwn ? (
+            <span className="inline-flex items-center gap-1.5">
+              <UserRound className="size-4" aria-hidden /> {t("ownSet")}
+            </span>
+          ) : material.groupId ? (
             <Link href={`/groups/${material.groupId}`} className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline">
               <Users className="size-4" aria-hidden /> {material.groupName}
             </Link>
@@ -73,6 +90,10 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
           ) : null}
         </div>
         {material.description ? <p className="mt-2 max-w-prose text-fg">{material.description}</p> : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <SetOwnerActions materialId={material.id} isOwn={material.isOwn} />
+          <OfflineToggle material={material} cards={cards} />
+        </div>
       </header>
 
       {cards.length === 0 ? (
@@ -81,11 +102,13 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
         <>
           <CardPreview cards={visible.length ? visible : cards} termLang={material.termLang} definitionLang={material.definitionLang} />
 
+          {data ? <LevelBar counts={counts} className="mb-6" /> : null}
+
           <section aria-labelledby="modes-title" className="mb-6">
             <h2 id="modes-title" className="sr-only">
               {t("modes")}
             </h2>
-            <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <ul className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               {MODES.map(({ key, icon: Icon }) => (
                 <li key={key}>
                   <Link
@@ -95,7 +118,10 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
                       <Icon className="size-5" aria-hidden />
                     </span>
-                    {t(key)}
+                    <span className="min-w-0">
+                      <span className="block">{t(key)}</span>
+                      {key === "review" && dueCount > 0 ? <span className="block text-xs font-semibold text-accent">{tr("dueBadge", { count: dueCount })}</span> : null}
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -141,9 +167,17 @@ export function SetView({ material, cards, serverData }: { material: MaterialDTO
                 const on = starred.has(c.id);
                 return (
                   <li key={c.id} className="flex items-start gap-3 rounded-2xl bg-surface p-4 shadow-card">
+                    {data ? (
+                      <span className="mt-2">
+                        <LevelDot level={cardLevel(data.srs?.[c.id], data.progress[c.id])} />
+                      </span>
+                    ) : null}
                     <div className="grid min-w-0 flex-1 gap-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6">
                       <span className="whitespace-pre-wrap break-words font-semibold">{c.term}</span>
-                      <span className="whitespace-pre-wrap break-words text-fg sm:border-l sm:border-border sm:pl-6">{c.definition}</span>
+                      <span className="flex items-start justify-between gap-3 sm:border-l sm:border-border sm:pl-6">
+                        <span className="whitespace-pre-wrap break-words text-fg">{c.definition}</span>
+                        <CardImage id={c.imageId} size="sm" className="mx-0 shrink-0" />
+                      </span>
                     </div>
                     <div className="-my-1 flex shrink-0 gap-1">
                       <button

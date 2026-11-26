@@ -191,6 +191,25 @@ export async function canAccessGroup(groupId: string | null): Promise<boolean> {
   return (await getAccessibleGroupIds()).has(groupId);
 }
 
+/**
+ * Egy készlet látható-e a néző számára: nyilvános, megnyitott csoporté, vagy a néző saját készlete.
+ * Más felhasználó saját készlete senkinek nem látszik (az adminnak sem az appban).
+ */
+export async function canAccessMaterial(m: { groupId: string | null; ownerUserId: string | null }): Promise<boolean> {
+  if (m.ownerUserId) {
+    const v = await getViewer();
+    return v.kind === "user" && v.user.id === m.ownerUserId;
+  }
+  return canAccessGroup(m.groupId);
+}
+
+/** Szinkron szűrő listákhoz: a már betöltött hozzáférési adatokkal dönt. */
+export async function materialVisibilityFilter(): Promise<(m: { groupId: string | null; ownerUserId: string | null }) => boolean> {
+  const [v, groups] = await Promise.all([getViewer(), getAccessibleGroupIds()]);
+  const uid = v.kind === "user" ? v.user.id : null;
+  return (m) => (m.ownerUserId ? m.ownerUserId === uid : !m.groupId || groups.has(m.groupId));
+}
+
 // ---------- Admin session ----------
 
 export async function createAdminSession() {

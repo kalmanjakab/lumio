@@ -5,6 +5,8 @@ import { json, parseJson, route } from "@/lib/server/http";
 import { requireUser } from "@/lib/server/auth";
 import { assertMaterialAccess } from "@/lib/server/data";
 import { gradeFor } from "@/lib/grading-scale";
+import { isValidSrs, type SrsCard } from "@/lib/srs";
+import { srsToRow } from "@/lib/server/review";
 
 const progressEntry = z.object({ level: z.number().int().min(0).max(3), streak: z.number().int().min(0).max(20), wrong: z.number().int().min(0).max(100000), at: z.number() });
 const item = z.object({
@@ -28,8 +30,9 @@ const item = z.object({
     .max(20)
     .default([]),
   matchBestMs: z.number().int().min(300).max(3600_000).nullable().default(null),
+  srs: z.record(z.string(), z.unknown()).default({}),
 });
-const MODES = new Set(["set", "flashcards", "learn", "test", "match"]);
+const MODES = new Set(["set", "flashcards", "learn", "test", "match", "review", "dictation"]);
 
 // Vendégként gyűjtött haladás átvétele belépés után. Csak olyan anyagot és kártyát veszünk át, amihez a fiók hozzáfér.
 export const POST = route(async (req) => {
@@ -55,6 +58,14 @@ export const POST = route(async (req) => {
             wrongCount: sql`${schema.cardProgress.wrongCount} + excluded.wrong_count`,
           },
         });
+    }
+    // Ismétlési állapot: ami a fiókban még nincs, átvesszük (a meglévőt nem írjuk felül).
+    const srs = Object.entries(it.srs).filter(([id, c]) => cardIds.has(id) && isValidSrs(c)) as [string, SrsCard][];
+    if (srs.length) {
+      await db
+        .insert(schema.cardReviews)
+        .values(srs.map(([cardId, c]) => ({ userId: user.id, cardId, materialId: it.materialId, ...srsToRow(c) })))
+        .onConflictDoNothing();
     }
     const stars = it.starred.filter((id) => cardIds.has(id));
     if (stars.length) {

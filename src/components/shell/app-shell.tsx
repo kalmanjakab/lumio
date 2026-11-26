@@ -4,13 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { House, Library, Users, Search, Settings as SettingsIcon, LogOut, Moon, ShieldCheck, LogIn } from "lucide-react";
+import { House, Library, Users, Search, Settings as SettingsIcon, LogOut, Moon, ShieldCheck, LogIn, ChartColumn } from "lucide-react";
+import { StreakBadge } from "./streak-badge";
+import { NotificationBell } from "./notification-bell";
 import { Logo } from "../logo";
 import { Avatar } from "../avatar";
 import { cn } from "../ui";
 import { useSettings } from "../providers";
 import { InstallBar } from "./install-bar";
 import { MustChangePassword } from "./must-change-password";
+import { clearOffline } from "@/lib/client/offline";
 import { api } from "@/lib/client/api";
 
 const NAV = [
@@ -65,6 +68,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          <Link
+            href="/stats"
+            aria-current={isActive(pathname, "/stats") ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-4 rounded-xl px-3 py-2.5 font-semibold transition-colors",
+              isActive(pathname, "/stats") ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface-2 hover:text-fg",
+            )}
+          >
+            <ChartColumn className="size-6" aria-hidden />
+            {t("stats")}
+          </Link>
         </nav>
       </aside>
 
@@ -165,7 +179,11 @@ function TopBar() {
         >
           <Search className="size-6" aria-hidden />
         </Link>
-        <div className="hidden lg:block lg:ml-auto">
+        <div className="flex items-center lg:ml-auto">
+          <StreakBadge />
+          {viewer.kind === "user" ? <NotificationBell /> : null}
+        </div>
+        <div className="hidden lg:block">
           {viewer.kind === "user" ? (
             <AccountMenu />
           ) : (
@@ -219,6 +237,7 @@ function AccountMenu() {
 
   const logout = async () => {
     await api("/api/auth/logout", { method: "POST", body: {} }).catch(() => {});
+    clearOffline();
     window.location.href = "/";
   };
 

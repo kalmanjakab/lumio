@@ -1,6 +1,6 @@
 # Flashly
 
-Tanulókártya webapp (telepíthető PWA): **Kártyák**, **Tanulás**, **Teszt** és **Párosítás** mód, jelszóval védett csoportok, fiókok és vendég mód. Alapnyelv magyar, emellett angol, francia és német.
+Tanulókártya webapp (telepíthető PWA): **Kártyák**, **Tanulás**, **Teszt**, **Párosítás**, **Ismétlés** (FSRS) és **Diktálás** mód, napi cél és sorozat, értesítések, saját készletek, képek a kártyákon, tanári feladatok, offline gyakorlás, jelszóval védett csoportok, fiókok és vendég mód. Alapnyelv magyar, emellett angol, francia és német.
 
 - Éles cím (beállítás után): `https://flashly.vercel.app`
 - Biztonsági jelentés: [docs/BIZTONSAGI-JELENTES.md](docs/BIZTONSAGI-JELENTES.md)
@@ -29,6 +29,11 @@ Minden ingyenes: Vercel Hobby csomag + Neon ingyenes csomag.
 | `ADMIN_PASSWORD_HASH` | az admin jelszó hash-e (base64) | a hash-generátor oldalon: „Hash készítése” |
 | `ADMIN_PATH_SLUG` | az admin oldal titkos útvonala | nem kötelező, alapból `jakab-admin-page-do-not-touch` (kisbetű, szám, kötőjel, min. 8 karakter) |
 | `IMPORT_API_KEY` | az import API kulcsa (AI-agentek ezzel töltenek fel készletet) | nem kötelező; a hash-generátor oldalon: „API-kulcs generálása”. Ha nincs beállítva, az API ki van kapcsolva. |
+| `VAPID_PUBLIC_KEY` | a push értesítések nyilvános kulcsa | nem kötelező; a hash-generátor oldalon: „Kulcsok generálása”. Nélküle csak az appon belüli értesítések (harang) működnek. |
+| `VAPID_PRIVATE_KEY` | a push értesítések titkos kulcsa (a fenti párja) | ugyanott, ugyanazzal a gombbal. Titkos. |
+| `VAPID_SUBJECT` | kapcsolattartó cím a push szolgáltatóknak | nem kötelező; pl. `https://flashly.vercel.app` vagy `mailto:valaki@pelda.hu` |
+| `CRON_SECRET` | az óránkénti időzített futás (emlékeztetők) védelme | a hash-generátor oldalon a „Kulcsok generálása” adja. A Vercel automatikusan elküldi a cron hívásokkal. Nélküle nem mennek ki időzített emlékeztetők. |
+| `ANTHROPIC_API_KEY` | az AI magyarázat kulcsa (Claude) | nem kötelező; a console.anthropic.com oldalon készíted. Nélküle a „Magyarázd el” gomb nem jelenik meg. Fizetős: felhasználónként óránként 40, naponta 150 kérés a korlát. |
 
 A `BLOB_READ_WRITE_TOKEN` **nem kell**, mert a profilképek az adatbázisban vannak.
 
@@ -49,6 +54,13 @@ Számítógépen ugyanez parancssorból: `npm run hash-admin` (a jelszót rejtve
 
 Utána minden push a `main` ágra automatikusan települ.
 
+### Push értesítések bekapcsolása
+
+1. Nyisd meg a hash-generátor oldalt, és nyomd meg a „Kulcsok generálása” gombot (4. pont). A kulcsok a böngésződben készülnek, nem mennek el sehova.
+2. A Vercelen add hozzá: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET` (és ha akarod, `VAPID_SUBJECT`), majd indíts új deploymentet.
+3. A `vercel.json` 24 cron feladatot tartalmaz (minden órában egyet), mindegyik az `/api/cron/notify` címet hívja. Hobby csomagon ez megengedett, mert mindegyik naponta egyszer fut. A Vercel Cron oldalán ellenőrizheted, hogy lefutnak-e.
+4. A kulcspárt ne cseréld feleslegesen: új kulcspár után mindenkinek újra be kell kapcsolnia az értesítéseket.
+
 ## Használati leírás – admin
 
 - Belépés: `https://flashly.vercel.app/<ADMIN_PATH_SLUG>`, az admin jelszóval. A belépés 2 óráig érvényes.
@@ -62,6 +74,8 @@ Utána minden push a `main` ágra automatikusan települ.
   - Ne felejts el **Mentés**-t nyomni (alul).
 - **Tipp a jelentésekhez**: ha egy szónak több jó fordítása van, vesszővel vagy pontosvesszővel sorold fel („feladni, abbahagyni”). Megengedő értékelésnél bármelyik elfogadott.
 - **Felhasználók**: lista; elfelejtett jelszónál „Ideiglenes jelszó”. A felhasználó minden eszközről kijelentkezik, és belépéskor új jelszót kell választania. Itt tudsz felhasználót törölni is.
+- **Feladatok**: a csoport oldalán kioszthatsz egy készletet (a csoportét vagy egy nyilvánosat) határidővel és megjegyzéssel. A tagok értesítést kapnak, a határidő előtti napon emlékeztetőt. Feladatonként látod, melyik tanuló hány százalékát tudja a kártyáknak, mennyit tanult, mi a legjobb teszteredménye, és mikor tanult utoljára.
+- **Képek**: a szerkesztőben minden kártyához tölthetsz fel képet (a jelentés oldalán jelenik meg). A képet a szerver kicsinyíti és WebP formátumba alakítja.
 - **Beállítások**: globális osztályzat-küszöbök (alapból 5: 85%, 4: 70%, 3: 55%, 2: 40%, alatta 1).
 
 ## Használati leírás – felhasználó
@@ -73,6 +87,13 @@ Utána minden push a `main` ágra automatikusan települ.
 - **Tanulás**: 7 kártyás körök. Minden kártya feleletválasztós, majd írásos kérdésen megy át. A hibás kártya hamarabb visszajön. „Nem tudom”, „Mégis jó volt”, körök végén összegző.
 - **Teszt**: beállítod a kérdések számát és típusát, a végén százalék, 1–5 osztályzat és kérdésenkénti javítás. A hibás kártyákat egy gombbal a Tanulásba viheted.
 - **Párosítás**: 12 csempe, minél gyorsabban. A rossz pár +1 másodperc, a legjobb időd mentődik.
+- **Ismétlés**: időzített ismétlés (FSRS algoritmus: a gép kiszámolja, mikor érdemes újra elővenni egy kártyát, hogy ne felejtsd el). A kártya megfordítása után 4 gombbal értékelsz (Újra, Nehéz, Jó, Könnyű); gépen szóköz és 1–4. A főoldalon és az Ismétlés oldalon minden készlet esedékes kártyája egy helyen.
+- **Diktálás**: a gép felolvassa a szót, te leírod (helyesírás), vagy a jelentését írod le (hallás utáni megértés). Lassított lejátszás, a hibásak a végén újra jönnek.
+- **Napi cél és sorozat**: a napi cél megválaszolt kártyák száma (alapból 20). Minden nap, amikor teljesíted, nő a sorozat. Minden 7. nap után kapsz egy sorozatmentőt (legfeljebb 2), ez egy kihagyott napot fedez. A Statisztika oldalon naptár, heti összesítő és a kártyáid szintje (új, tanulás alatt, ismert, elsajátított) látszik.
+- **Értesítések**: a harang ikonnál az appon belül, és ha bekapcsolod (Beállítások → Értesítések), push üzenetként is: esti sorozat-figyelmeztetés, napi emlékeztető a választott órában, ritka visszahívó üzenet 3, 7, 14 és 30 nap kihagyás után, vasárnapi heti összefoglaló, új feladat és határidő. Este 10 és reggel 8 között nem megy ki semmi, és naponta legfeljebb 2 emlékeztető. iPhone-on előbb a kezdőképernyőre kell tenni az appot.
+- **Saját készletek**: fiókkal a Könyvtár „Sajátjaim” fülén készíthetsz saját készletet, vagy bármelyik látható készletet lemásolhatod magadnak. A saját készletet csak te látod.
+- **Offline**: nyilvános vagy saját készlet oldalán az „Offline mentés” gombbal elmented. Internet nélkül az app egy offline oldalt mutat, ahol a mentett készleteket kártyázhatod. Amit offline tanulsz, az a mai célba beszámít, amikor újra van net. Kijelentkezéskor az offline mentések törlődnek az eszközről.
+- **AI magyarázat** (ha be van állítva): hibás válasz után a „Magyarázd el” gomb rövid magyarázatot ad, és megmondja, a beírt válaszod elfogadható volt-e.
 - **Beállítások**: profilkép (feltöltés vagy avatar), jelszócsere, csoportok kezelése, téma, hang, nyelv, tanulási alapbeállítások, telepítés, adatvédelem, fióktörlés.
 - **Telepítés**: Androidon a megjelenő „Telepítés” sávval. iPhone-on: Safari → Megosztás → Főképernyőhöz adás.
 
@@ -98,9 +119,10 @@ Utána minden push a `main` ágra automatikusan települ.
 
 ## Ismert korlátok
 
-- **Szinonimák**: AI nélkül a gép csak a kártyán felsorolt alternatívákat ismeri fel szinonimaként. Minden másra ott a „Mégis jó volt” gomb.
+- **Szinonimák**: a gép csak a kártyán felsorolt alternatívákat ismeri fel szinonimaként. Minden másra ott a „Mégis jó volt” gomb, és ha be van állítva, az AI magyarázat megítéli a választ.
 - **Felolvasás**: a böngésző beépített hangjait használja. A minőség eszközfüggő, iPhone-on a telepített hangokon múlik.
-- **Offline**: internet nélkül csak egy „Nincs internetkapcsolat” oldal jelenik meg. Szándékosan nem tárolunk tananyagot az eszközön, mert a védett csoportok tartalma nem kerülhet gyorsítótárba.
+- **Offline**: csak a nyilvános és a saját készletek menthetők offline, és csak szövegként (kép nélkül). A védett csoportok tartalma szándékosan nem kerül az eszközre. Offline csak egyszerű kártyázás van; ami nem aznap történt, azt a sorozat már nem tudja jóváírni.
+- **Értesítések időzítése**: az emlékeztetők óránként egyszer mennek ki, így pár perces csúszás lehet. A Vercel Hobby csomagon a cron futások ideje egy órán belül változhat.
 
 ## Fejlesztőknek
 

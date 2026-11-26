@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { db, schema } from "@/lib/db";
-import { canAccessGroup } from "@/lib/server/auth";
+import { canAccessGroup, getViewer } from "@/lib/server/auth";
+import { AssignmentList } from "@/components/assignments/assignment-list";
+import { loadUserSettings } from "@/lib/server/settings";
 import { listAccessibleMaterials } from "@/lib/server/data";
 import { UnlockForm, RemoveGroupButton } from "@/components/groups/unlock-form";
 import { MaterialRow } from "@/components/material-row";
@@ -37,6 +39,8 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
     );
   }
   const materials = (await listAccessibleMaterials()).filter((m) => m.groupId === group.id);
+  const viewer = await getViewer();
+  const tz = viewer.kind === "user" ? (await loadUserSettings(viewer.user.id)).timezone : null;
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -46,6 +50,7 @@ export default async function GroupPage({ params, searchParams }: { params: Prom
         </div>
         <RemoveGroupButton groupId={group.id} groupName={group.name} redirectTo="/groups" />
       </div>
+      {viewer.kind === "user" && tz ? <AssignmentList userId={viewer.user.id} groupId={group.id} timeZone={tz} /> : null}
       {materials.length === 0 ? (
         <EmptyState>{t("noMaterials")}</EmptyState>
       ) : (

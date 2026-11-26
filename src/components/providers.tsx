@@ -5,7 +5,49 @@ import { useRouter } from "next/navigation";
 import { DEFAULT_USER_SETTINGS, type UserSettings } from "@/lib/validation";
 import { readLocal, setCookie, writeLocal } from "@/lib/client/storage";
 import { api } from "@/lib/client/api";
-import { ToastProvider } from "./toast";
+import { ToastProvider, useToast } from "./toast";
+import { useTranslations } from "next-intl";
+import { configureActivity, onActivityEvent, recordActivity, retryPendingActivity, setActivityGoal } from "@/lib/client/activity";
+import { takeOfflineActivity } from "@/lib/client/offline";
+import type { StreakState } from "@/lib/streak";
+
+export type LayoutActivity = { today: string; items: number; goal: number; goalMet: boolean; streak: StreakState } | null;
+
+/** Napi cél és sorozat: beállítás, időzóna-frissítés, ünneplő üzenet a cél teljesítésekor. */
+function ActivityBridge({ activity }: { activity: LayoutActivity }) {
+  const { settings, update, viewer, hydrated } = useSettings();
+  const toast = useToast();
+  const t = useTranslations("streak");
+  useEffect(() => {
+    if (!hydrated) return;
+    configureActivity({ kind: viewer.kind, goal: settings.dailyGoal, server: activity });
+    if (viewer.kind === "user") retryPendingActivity();
+    // Az offline tanulás mai eredménye most kerül jóváírásra.
+    const offlineItems = takeOfflineActivity();
+    if (offlineItems > 0) recordActivity(offlineItems);
+    // A szerver időzónája kövesse az eszközét (a napváltáshoz és az értesítések időzítéséhez).
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (viewer.kind === "user" && tz && tz !== settings.timezone && tz.length <= 64) update({ timezone: tz });
+    } catch {
+      /* nincs teendő */
+    }
+    // Szándékosan csak a betöltéskor és a fiókváltáskor fut.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, viewer.kind, activity]);
+  useEffect(() => {
+    setActivityGoal(settings.dailyGoal);
+  }, [settings.dailyGoal]);
+  useEffect(
+    () =>
+      onActivityEvent((e) => {
+        if (!e.goalJustMet) return;
+        toast(e.earnedFreeze ? t("goalMetFreeze", { days: e.streak }) : t("goalMet", { days: e.streak }), "success");
+      }),
+    [toast, t],
+  );
+  return null;
+}
 
 export type ClientViewer =
   | { kind: "guest" }
@@ -161,16 +203,21 @@ function InstallProvider({ children }: { children: ReactNode }) {
 export function AppProviders({
   initialSettings,
   viewer,
+  activity = null,
   children,
 }: {
   initialSettings: UserSettings;
   viewer: ClientViewer;
+  activity?: LayoutActivity;
   children: ReactNode;
 }) {
   return (
     <SettingsProvider initial={initialSettings ?? DEFAULT_USER_SETTINGS} viewer={viewer}>
       <InstallProvider>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <ActivityBridge activity={activity} />
+          {children}
+        </ToastProvider>
       </InstallProvider>
     </SettingsProvider>
   );

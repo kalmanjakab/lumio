@@ -1,21 +1,29 @@
 import { getTranslations } from "next-intl/server";
-import { WifiOff } from "lucide-react";
-import { LogoMark } from "@/components/logo";
+import { OfflineStudy } from "@/components/offline/offline-study";
 
-// Statikus offline oldal: nincs benne semmilyen személyes adat, ezért a service worker eltárolhatja.
+// Offline oldal: a szerver csak a (személyes adatot nem tartalmazó) felületet adja,
+// a mentett készleteket a böngésző olvassa be a saját tárolójából. Ezért a service worker eltárolhatja.
 export default async function OfflinePage() {
   const t = await getTranslations("offline");
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-5 px-6 text-center">
-      <LogoMark className="size-16" />
-      <WifiOff className="size-8 text-muted" aria-hidden />
-      <h1 className="text-2xl font-extrabold">{t("title")}</h1>
-      <p className="text-muted">{t("text")}</p>
-      {/* Teljes újratöltés kell (nem kliensoldali navigáció), hogy a hálózatról jöjjön az oldal. */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a href="/" className="inline-flex h-11 items-center rounded-full bg-primary px-5 font-semibold text-on-primary">
-        {t("retry")}
-      </a>
-    </main>
+    <OfflineStudy
+      t={{
+        title: t("title"),
+        text: t("textSaved"),
+        retry: t("retry"),
+        savedTitle: t("savedTitle"),
+        none: t("none"),
+        cards: t.raw("cards") as string,
+        study: t("study"),
+        back: t("back"),
+        know: t("know"),
+        dontKnow: t("dontKnow"),
+        flip: t("flip"),
+        done: t.raw("done") as string,
+        again: t("again"),
+        againMissed: t.raw("againMissed") as string,
+        savedNote: t("savedNote"),
+      }}
+    />
   );
 }

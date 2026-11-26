@@ -1,4 +1,5 @@
 // Közös típusok a szerver és a kliens között.
+import type { SrsCard } from "./srs";
 
 export type ProgressEntry = { level: number; streak: number; wrong: number; at: number };
 
@@ -31,9 +32,11 @@ export type StudyData = {
   starred: string[];
   tests: TestResultRecord[];
   matchBestMs: number | null;
+  // Ütemezett ismétlés állapota kártyánként.
+  srs: Record<string, SrsCard>;
 };
 
-export type CardDTO = { id: string; term: string; definition: string };
+export type CardDTO = { id: string; term: string; definition: string; imageId: string | null };
 
 export type MaterialDTO = {
   id: string;
@@ -44,4 +47,6 @@ export type MaterialDTO = {
   termLang: string;
   definitionLang: string;
   cardCount: number;
+  // A néző saját (privát) készlete.
+  isOwn: boolean;
 };

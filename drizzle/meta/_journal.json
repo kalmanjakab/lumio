@@ -15,6 +15,13 @@
       "when": 1795640295075,
       "tag": "0001_api_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795704604450,
+      "tag": "0002_features_v2",
+      "breakpoints": true
     }
   ]
 }

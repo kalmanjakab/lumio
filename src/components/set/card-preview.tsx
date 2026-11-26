@@ -7,6 +7,7 @@ import type { CardDTO } from "@/lib/study-types";
 import { useSettings } from "../providers";
 import { speak } from "@/lib/client/tts";
 import { cn } from "../ui";
+import { CardImage } from "../card-image";
 
 export function CardPreview({ cards, termLang, definitionLang }: { cards: CardDTO[]; termLang: string; definitionLang: string }) {
   const t = useTranslations("set");
@@ -57,9 +58,10 @@ export function CardPreview({ cards, termLang, definitionLang }: { cards: CardDT
           {[front, back].map((text, side) => (
             <span
               key={side}
-              className={cn("flip-face flex items-center justify-center rounded-3xl bg-surface p-6 shadow-card", side === 1 && "flip-back")}
+              className={cn("flip-face flex flex-col items-center justify-center gap-3 rounded-3xl bg-surface p-6 shadow-card", side === 1 && "flip-back")}
               aria-hidden
             >
+              {(side === 1) === frontIsTerm ? <CardImage id={card.imageId} /> : null}
               <span className="max-h-full overflow-auto whitespace-pre-wrap text-center text-2xl font-medium sm:text-3xl">{text}</span>
             </span>
           ))}

@@ -5,8 +5,23 @@ import { useTranslations } from "next-intl";
 import { Check, Lightbulb, Volume2, X } from "lucide-react";
 import { accentsFor } from "@/lib/accents";
 import { cn } from "../ui";
+import { CardImage } from "../card-image";
 
-export function PromptCard({ label, text, onSpeak, compact, lang }: { label?: string; text: string; onSpeak?: () => void; compact?: boolean; lang?: string }) {
+export function PromptCard({
+  label,
+  text,
+  onSpeak,
+  compact,
+  lang,
+  imageId,
+}: {
+  label?: string;
+  text: string;
+  onSpeak?: () => void;
+  compact?: boolean;
+  lang?: string;
+  imageId?: string | null;
+}) {
   const tc = useTranslations("common");
   return (
     <div className={cn("rounded-3xl bg-surface p-5 shadow-card", compact ? "min-h-28" : "min-h-40")}>
@@ -18,6 +33,7 @@ export function PromptCard({ label, text, onSpeak, compact, lang }: { label?: st
           </button>
         ) : null}
       </div>
+      {imageId ? <CardImage id={imageId} className="mb-3" /> : null}
       <p className="whitespace-pre-wrap break-words text-xl font-medium leading-snug sm:text-2xl" lang={lang}>
         {text}
       </p>

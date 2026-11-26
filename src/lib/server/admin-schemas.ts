@@ -14,6 +14,7 @@ export const cardInputSchema = z.object({
   id: z.string().max(40).optional(),
   term: z.string().trim().min(1).max(1000),
   definition: z.string().trim().min(1).max(2000),
+  imageId: z.uuid().nullable().optional(),
 });
 
 export const materialUpdateSchema = z.object({

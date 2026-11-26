@@ -31,6 +31,7 @@ import { Sheet, SheetGroup, ConfirmDialog } from "../sheet";
 import { Button, ProgressBar, Spinner, Switch, cn } from "../ui";
 import { useToast } from "../toast";
 import { GuestNudge } from "../home/guest-nudge";
+import { AiExplain } from "../ai-explain";
 import { ModeEmpty, ModeHeader } from "./mode-header";
 import { McOptions, PromptCard, WrittenInput, type OptionState, type WrittenInputHandle } from "./question-parts";
 
@@ -178,6 +179,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
       const pathLen = typePath(settings).length;
       const cs = next.cards[question.cardId];
       store.saveProgress([{ cardId: question.cardId, level: levelOf(cs, pathLen), streak: cs?.step ?? 0, wrongDelta: correct ? 0 : 1 }]);
+      store.recordActivity(1);
       setState(next);
       persist(next);
     },
@@ -563,7 +565,13 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
           </>
         ) : (
           <>
-            <PromptCard label={promptLabel} text={question.prompt} onSpeak={sayPrompt} lang={promptLang} />
+            <PromptCard
+              label={promptLabel}
+              text={question.prompt}
+              onSpeak={sayPrompt}
+              lang={promptLang}
+              imageId={question.answerSide === "term" ? allCards.find((c) => c.id === question.cardId)?.imageId : null}
+            />
             {question.type === "mc" && question.options ? (
               <>
                 <p className="font-semibold text-muted">{t("chooseAnswer")}</p>
@@ -657,6 +665,7 @@ export function LearnMode({ material, cards: allCards, serverData, subset }: { m
                 {retypeError ? <p className="text-sm font-medium text-danger">{t("retypeWrong")}</p> : null}
               </form>
             ) : null}
+            {!feedback.correct ? <AiExplain cardId={question.cardId} answer={question.type === "written" ? feedback.userAnswer : null} /> : null}
             <div className="flex flex-wrap items-center justify-end gap-2">
               {!feedback.correct && question.type === "written" && feedback.userAnswer ? (
                 <Button

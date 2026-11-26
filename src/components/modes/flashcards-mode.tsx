@@ -27,6 +27,7 @@ import { Sheet, SheetGroup, ConfirmDialog } from "../sheet";
 import { DualProgress, Segmented, Spinner, Switch, cn } from "../ui";
 import { GuestNudge } from "../home/guest-nudge";
 import { ModeEmpty, ModeHeader } from "./mode-header";
+import { CardImage } from "../card-image";
 
 export function FlashcardsMode({ material, cards: allCards, serverData }: { material: MaterialDTO; cards: CardDTO[]; serverData: StudyData | null }) {
   const t = useTranslations("flashcards");
@@ -168,12 +169,13 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
       setLeaving({ result, x: (Math.abs(vx) / len) * w * sx, y: (vy / len) * w });
       setTimeout(() => {
         update((s) => answer(s, result));
+        store.recordActivity(1);
         setLeaving(null);
         setDrag({ x: 0, y: 0, active: false });
         deciding.current = false;
       }, 220);
     },
-    [state, update],
+    [state, update, store],
   );
 
   // Érintésnél a görgetést csak akkor tiltjuk le, ha a mozdulat már biztosan kártyahúzás.
@@ -577,6 +579,7 @@ export function FlashcardsMode({ material, cards: allCards, serverData }: { mate
                     aria-label={`${side === "front" ? frontText : backText}. ${t("tapToFlip")}`}
                     className="flex flex-1 flex-col items-center justify-center overflow-auto px-6 pb-6 text-center"
                   >
+                    {(side === "back") === frontIsTerm && current?.imageId ? <CardImage id={current.imageId} size="lg" className="mb-4" /> : null}
                     <span className="whitespace-pre-wrap break-words text-2xl font-medium leading-snug sm:text-4xl">{side === "front" ? frontText : backText}</span>
                     {side === "front" && showHint ? <span className="mt-4 font-mono text-lg tracking-widest text-muted">{hintFor(backText)}</span> : null}
                   </button>

@@ -10,10 +10,12 @@ import { Avatar } from "../avatar";
 import { Sheet, ConfirmDialog } from "../sheet";
 import { Button, PasswordField, Segmented, Switch, cn } from "../ui";
 import { useToast } from "../toast";
+import { clearOffline } from "@/lib/client/offline";
 import { api, ApiClientError } from "@/lib/client/api";
 import { playSound } from "@/lib/client/sound";
 import { speak } from "@/lib/client/tts";
 import { LOCALES, type Locale } from "@/lib/validation";
+import { NotificationSettings } from "./notification-settings";
 
 const LANG_NAMES: Record<Locale, string> = { hu: "Magyar", en: "English", fr: "Français", de: "Deutsch" };
 const PRESETS = Array.from({ length: 12 }, (_, i) => `a${i + 1}`);
@@ -80,6 +82,7 @@ export function SettingsView({ groups }: { groups: Group[] }) {
               icon={<LogOut className="size-5 text-muted" aria-hidden />}
               onClick={async () => {
                 await api("/api/auth/logout", { method: "POST", body: {} }).catch(() => {});
+    clearOffline();
                 window.location.href = "/";
               }}
             >
@@ -224,7 +227,29 @@ export function SettingsView({ groups }: { groups: Group[] }) {
           />
         </div>
         <Switch label={t("defaultTts")} checked={settings.defaultTts} onChange={(v) => update({ defaultTts: v })} />
+        <div className="py-3.5">
+          <p className="mb-2 font-medium">{t("dailyGoal")}</p>
+          <Segmented
+            label={t("dailyGoal")}
+            value={String(settings.dailyGoal)}
+            onChange={(v) => update({ dailyGoal: Number(v) })}
+            options={["10", "20", "30", "50", "100"].map((v) => ({ value: v, label: v }))}
+          />
+          <p className="mt-2 text-sm text-muted">{t("dailyGoalHint")}</p>
+        </div>
+        <div className="py-3.5">
+          <p className="mb-2 font-medium">{t("newPerSession")}</p>
+          <Segmented
+            label={t("newPerSession")}
+            value={String(settings.newPerSession)}
+            onChange={(v) => update({ newPerSession: Number(v) })}
+            options={["5", "10", "20", "30"].map((v) => ({ value: v, label: v }))}
+          />
+          <p className="mt-2 text-sm text-muted">{t("newPerSessionHint")}</p>
+        </div>
       </Section>
+
+      <NotificationSettings />
 
       <Section title={t("app")} id="s-app">
         {install.isStandalone ? (

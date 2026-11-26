@@ -3,6 +3,10 @@ import { getViewer } from "@/lib/server/auth";
 import { getRecentForUser, listAccessibleMaterials, listGroupsForViewer } from "@/lib/server/data";
 import { ContinueCarousel } from "@/components/home/continue-carousel";
 import { GuestNudge } from "@/components/home/guest-nudge";
+import { TodayCard } from "@/components/home/today-card";
+import { AssignmentList } from "@/components/assignments/assignment-list";
+import { loadUserSettings } from "@/lib/server/settings";
+import { countDueForUser } from "@/lib/server/review";
 import { GroupTile, MaterialRow } from "@/components/material-row";
 import { EmptyState, SectionTitle } from "@/components/ui";
 
@@ -11,20 +15,24 @@ export default async function HomePage() {
   const tc = await getTranslations("common");
   const tg = await getTranslations("groups");
   const viewer = await getViewer();
-  const [groups, materials, recent] = await Promise.all([
+  const [groups, materials, recent, due, userSettings] = await Promise.all([
     listGroupsForViewer(),
     listAccessibleMaterials(),
     viewer.kind === "user" ? getRecentForUser(viewer.user.id) : Promise.resolve(null),
+    viewer.kind === "user" ? countDueForUser(viewer.user.id) : Promise.resolve(null),
+    viewer.kind === "user" ? loadUserSettings(viewer.user.id) : Promise.resolve(null),
   ]);
   const myGroups = groups.filter((g) => g.unlocked);
-  const publicSets = materials.filter((m) => m.groupId === null);
+  const publicSets = materials.filter((m) => m.groupId === null && !m.isOwn);
 
   return (
     <div>
       <h1 className="mb-6 text-2xl font-extrabold sm:text-3xl">
         {viewer.kind === "user" ? t("greeting", { name: viewer.user.username }) : t("greetingGuest")}
       </h1>
+      <TodayCard serverDue={due} />
       <GuestNudge />
+      {viewer.kind === "user" && userSettings ? <AssignmentList userId={viewer.user.id} timeZone={userSettings.timezone} /> : null}
       <ContinueCarousel serverItems={recent} materials={materials.map((m) => ({ id: m.id, title: m.title, cardCount: m.cardCount }))} />
 
       <section aria-labelledby="my-groups" className="mb-10">

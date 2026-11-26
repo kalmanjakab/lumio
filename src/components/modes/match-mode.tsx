@@ -111,11 +111,12 @@ export function MatchMode({ material, cards: allCards, serverData }: { material:
       setPhase("done");
       if (user.soundEffects) playSound("finish", user.volume);
       const prevBest = best;
+      store.recordActivity(Math.floor(tiles.length / 2));
       const newBest = await store.saveMatchTime(Math.round(ms));
       setBest(newBest);
       setIsRecord(prevBest === null || Math.round(ms) < prevBest);
     },
-    [best, store, user.soundEffects, user.volume],
+    [best, store, tiles.length, user.soundEffects, user.volume],
   );
 
   const attempt = (aKey: string, bKey: string) => {

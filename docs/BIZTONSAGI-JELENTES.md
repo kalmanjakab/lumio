@@ -103,3 +103,14 @@ npx next build && npx playwright test   # végponttól végpontig tesztek (helyi
 - Telepítési sáv (megjelenés, elutasítás megjegyzése, iPhone-os magyarázat), nyelvváltás, sötét mód
 - Admin: csoport és készlet létrehozása, tömeges import, a felhasználó feloldja és látja
 - Hash-generátor kimenete érvényes, service worker gyorsítótár, billentyűzetes kezelés, asztali fiókmenü
+
+## Új funkciók (2026. november) – biztonsági szempontok
+
+- **Saját készletek**: csak a tulajdonos látja és szerkesztheti. Más felhasználónak „nem létezik” (404), és az admin felületen sem jelennek meg. Saját készlet nem lehet csoportban (adatbázis-szabály), és feladatként sem osztható ki.
+- **Képek**: feltöltéskor a szerver a fájl tartalmából ellenőrzi a típust, újrakódolja WebP-be (így a rejtett adatok és a metaadatok elvesznek), legfeljebb 6 MB és 800 px. A `/img/…` cím ugyanazzal a jogosultsággal szolgál ki, mint maga a készlet; védett csoport képe nem kerül gyorsítótárba (`no-store`).
+- **Push értesítések**: a VAPID kulcspár a böngészőben készül (hash-generátor oldal), soha nem kerül a repóba vagy a naplókba. A push üzenet csak cím, szöveg és egy belső útvonal; a service worker csak saját oldalra navigál. Visszavont vagy sokszor hibás feliratkozást a szerver töröl.
+- **Időzített futás** (`/api/cron/notify`): csak a `CRON_SECRET`-tel aláírt hívást fogadja el, időzítés-biztos összehasonlítással. Titok nélkül 401.
+- **Tanári feladatok**: csak admin hozhat létre és törölhet; csak a csoport saját vagy nyilvános készlete osztható ki. A tanuló csak az érvényes hozzáféréssel rendelkező csoportjai feladatait látja; jelszócsere vagy „mindenki kizárása” után ezek is eltűnnek.
+- **AI magyarázat**: csak bejelentkezve, csak olyan kártyára, amihez a felhasználónak hozzáférése van; óránként 40, naponta 150 kérés. A kártya szövegét az AI adatként kapja, nem utasításként. A kulcs csak a szerveren van.
+- **Offline mentés**: csak nyilvános és saját készlet menthető az eszközre (a böngésző tárolójába), védett csoporté nem. Kijelentkezéskor minden offline adat törlődik. A service worker továbbra is csak nyilvános statikus fájlokat és az (adat nélküli) offline oldalt tárolja; a mentett készleteket az oldal a böngésző saját tárolójából olvassa.
+- E2E tesztek: `e2e/desktop-features.spec.ts` (saját készlet láthatósága, feladat jogosultság, cron titok, push és AI kikapcsolt állapot, valódi offline mód).

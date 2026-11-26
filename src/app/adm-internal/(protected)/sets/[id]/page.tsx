@@ -12,10 +12,10 @@ export default async function AdminSetPage({ params }: { params: Promise<{ id: s
   if (!z.uuid().safeParse(id).success) notFound();
   const base = adminBase();
   const [m] = await db.select().from(schema.materials).where(eq(schema.materials.id, id));
-  if (!m) notFound();
+  if (!m || m.ownerUserId) notFound();
   const [cards, groups, globalThresholds] = await Promise.all([
     db
-      .select({ id: schema.cards.id, term: schema.cards.term, definition: schema.cards.definition })
+      .select({ id: schema.cards.id, term: schema.cards.term, definition: schema.cards.definition, imageId: schema.cards.imageId })
       .from(schema.cards)
       .where(eq(schema.cards.materialId, id))
       .orderBy(asc(schema.cards.position)),
@@ -29,9 +29,7 @@ export default async function AdminSetPage({ params }: { params: Promise<{ id: s
       </Link>
       <div className="mt-2">
         <SetEditor
-          base={base}
-          groups={groups}
-          globalThresholds={globalThresholds}
+          variant={{ kind: "admin", base, groups, globalThresholds }}
           material={{
             id: m.id,
             title: m.title,

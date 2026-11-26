@@ -11,6 +11,10 @@ import {
   index,
   customType,
   check,
+  doublePrecision,
+  date,
+  uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -108,12 +112,18 @@ export const materials = pgTable(
     definitionLang: text("definition_lang").notNull().default("hu-HU"),
     gradeThresholds: jsonb("grade_thresholds").$type<GradeThresholds | null>(),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Felhasználó saját (privát) készlete. Ilyenkor groupId mindig null, és csak a tulajdonos látja.
+    ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
+    // Ha másolatként készült: melyik készletből (csak tájékoztató, a forrás törölhető).
+    sourceMaterialId: uuid("source_material_id"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [
     index("materials_group_idx").on(t.groupId),
+    index("materials_owner_idx").on(t.ownerUserId),
     check("materials_type_check", sql`${t.type} in ('flashcards')`),
+    check("materials_owner_group_check", sql`${t.ownerUserId} is null or ${t.groupId} is null`),
   ],
 );
 
@@ -126,6 +136,8 @@ export const cards = pgTable(
       .references(() => materials.id, { onDelete: "cascade" }),
     term: text("term").notNull(),
     definition: text("definition").notNull(),
+    // Kép a kártyán (a jelentés oldalán jelenik meg). A kép bájtjai a card_images táblában vannak.
+    imageId: uuid("image_id").references((): AnyPgColumn => cardImages.id, { onDelete: "set null" }),
     position: integer("position").notNull().default(0),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -283,4 +295,150 @@ export const apiImports = pgTable(
     createdAt: ts("created_at").notNull().defaultNow(),
   },
   (t) => [index("api_imports_content_idx").on(t.contentHash, t.createdAt)],
+);
+
+// ---------- Képek a kártyákon ----------
+
+// A kép mindig egy készlethez tartozik: a jogosultságot a készleten keresztül ellenőrizzük.
+export const cardImages = pgTable(
+  "card_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    materialId: uuid("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    image: bytea("image").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("card_images_material_idx").on(t.materialId)],
+);
+
+// ---------- Ütemezett ismétlés (FSRS) ----------
+
+export const cardReviews = pgTable(
+  "card_reviews",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    cardId: uuid("card_id")
+      .notNull()
+      .references(() => cards.id, { onDelete: "cascade" }),
+    materialId: uuid("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    due: ts("due").notNull(),
+    stability: doublePrecision("stability").notNull(),
+    difficulty: doublePrecision("difficulty").notNull(),
+    elapsedDays: integer("elapsed_days").notNull().default(0),
+    scheduledDays: integer("scheduled_days").notNull().default(0),
+    learningSteps: integer("learning_steps").notNull().default(0),
+    reps: integer("reps").notNull().default(0),
+    lapses: integer("lapses").notNull().default(0),
+    // 0 = új, 1 = tanulás, 2 = ismétlés, 3 = újratanulás (az FSRS állapotai)
+    state: smallint("state").notNull().default(0),
+    lastReview: ts("last_review"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.cardId] }),
+    index("card_reviews_user_due_idx").on(t.userId, t.due),
+    index("card_reviews_user_material_idx").on(t.userId, t.materialId),
+  ],
+);
+
+// ---------- Napi aktivitás és sorozat ----------
+
+// Napi összesítő a felhasználó saját időzónája szerinti naptári napra.
+export const dailyActivity = pgTable(
+  "daily_activity",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    // Megválaszolt kártyák száma (minden módban).
+    items: integer("items").notNull().default(0),
+    // Ebből ismétlés módban.
+    reviews: integer("reviews").notNull().default(0),
+    goalMet: boolean("goal_met").notNull().default(false),
+    // Ezt a napot egy „sorozatmentő” fedezte (nem tanult, de nem szakadt meg a sorozat).
+    frozen: boolean("frozen").notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
+export const streaks = pgTable("streaks", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  current: integer("current").notNull().default(0),
+  longest: integer("longest").notNull().default(0),
+  // Az utolsó nap, amikor a napi cél teljesült (vagy sorozatmentő fedezte).
+  lastDay: date("last_day", { mode: "string" }),
+  freezes: smallint("freezes").notNull().default(0),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+// ---------- Feladatok (tanári kiosztás) ----------
+
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    materialId: uuid("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    note: text("note").notNull().default(""),
+    dueAt: ts("due_at").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("assignments_group_idx").on(t.groupId, t.dueAt)],
+);
+
+// ---------- Értesítések ----------
+
+// Web Push feliratkozások. Az endpoint a böngésző push-szolgáltatójának címe.
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    label: text("label").notNull().default(""),
+    failCount: integer("fail_count").notNull().default(0),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    lastSuccessAt: ts("last_success_at"),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+// Az appon belüli értesítések (harang ikon). A dedupeKey akadályozza meg, hogy ugyanaz kétszer menjen ki.
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    // A szöveg paraméterei (a megjelenítés a felhasználó nyelvén történik).
+    params: jsonb("params").notNull().default({}),
+    url: text("url").notNull().default("/"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    readAt: ts("read_at"),
+  },
+  (t) => [
+    uniqueIndex("notifications_dedupe_idx").on(t.userId, t.dedupeKey),
+    index("notifications_user_created_idx").on(t.userId, t.createdAt),
+  ],
 );

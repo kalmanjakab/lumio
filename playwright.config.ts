@@ -39,6 +39,8 @@ export default defineConfig({
       ADMIN_PASSWORD_HASH: adminHash,
       ADMIN_PATH_SLUG: "e2e-titkos-admin",
       FLASHLY_INSECURE_COOKIES: "1",
+      // Csak a helyi tesztszerverhez kitalált érték.
+      CRON_SECRET: "e2e-cron-titok-csak-tesztre-0123456789",
       IMPORT_API_KEY: IMPORT_TEST_KEY,
       NODE_ENV: "production",
     },

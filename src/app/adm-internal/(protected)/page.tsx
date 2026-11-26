@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, count, eq, sql } from "drizzle-orm";
+import { asc, count, eq, isNull, sql } from "drizzle-orm";
 import { ChevronRight, Lock, Globe } from "lucide-react";
 import { db, schema } from "@/lib/db";
 import { adminBase } from "@/lib/server/env";
@@ -25,6 +25,7 @@ export default async function AdminHome() {
     })
     .from(schema.materials)
     .leftJoin(schema.cards, eq(schema.cards.materialId, schema.materials.id))
+    .where(isNull(schema.materials.ownerUserId))
     .groupBy(schema.materials.id)
     .orderBy(asc(schema.materials.title));
   const publicSets = materials.filter((m) => m.groupId === null);

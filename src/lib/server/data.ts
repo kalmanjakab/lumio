@@ -1,10 +1,11 @@
 import "server-only";
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { canAccessGroup, getAccessibleGroupIds, getViewer } from "./auth";
+import { canAccessMaterial, getAccessibleGroupIds, getViewer, materialVisibilityFilter } from "./auth";
 import type { CardDTO, MaterialDTO, StudyData, TestResultRecord, ProgressEntry } from "@/lib/study-types";
 import type { GradeThresholds } from "@/lib/db/schema";
 import { getGlobalThresholds } from "./app-settings";
+import { rowToSrs } from "./review";
 
 export type GroupListItem = { id: string; name: string; unlocked: boolean; materialCount: number | null };
 
@@ -30,19 +31,31 @@ const materialSelect = {
   groupName: schema.groups.name,
   termLang: schema.materials.termLang,
   definitionLang: schema.materials.definitionLang,
+  ownerUserId: schema.materials.ownerUserId,
   cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = "materials"."id")`,
 };
 
-/** Minden anyag, amihez a néző hozzáfér: a nyilvánosak és a megnyitott csoportok anyagai. */
+type MaterialRowRaw = Omit<MaterialDTO, "isOwn"> & { ownerUserId: string | null };
+const toDTO = ({ ownerUserId, ...m }: MaterialRowRaw): MaterialDTO => ({ ...m, isOwn: ownerUserId !== null });
+
+/** SQL-feltétel: a nyilvános készletek, a megnyitott csoportok készletei és a néző saját készletei. */
+export async function materialAccessWhere() {
+  const [accessible, v] = await Promise.all([getAccessibleGroupIds(), getViewer()]);
+  const parts = [and(isNull(schema.materials.groupId), isNull(schema.materials.ownerUserId))];
+  if (accessible.size) parts.push(inArray(schema.materials.groupId, [...accessible]));
+  if (v.kind === "user") parts.push(eq(schema.materials.ownerUserId, v.user.id));
+  return or(...parts)!;
+}
+
+/** Minden anyag, amihez a néző hozzáfér: a nyilvánosak, a megnyitott csoportok anyagai és a sajátjai. */
 export async function listAccessibleMaterials(): Promise<MaterialDTO[]> {
-  const accessible = [...(await getAccessibleGroupIds())];
-  const where = accessible.length ? or(isNull(schema.materials.groupId), inArray(schema.materials.groupId, accessible)) : isNull(schema.materials.groupId);
-  return db
+  const rows = await db
     .select(materialSelect)
     .from(schema.materials)
     .leftJoin(schema.groups, eq(schema.groups.id, schema.materials.groupId))
-    .where(where)
+    .where(await materialAccessWhere())
     .orderBy(asc(schema.materials.sortOrder), asc(schema.materials.title));
+  return rows.map(toDTO);
 }
 
 export type MaterialResult =
@@ -59,25 +72,35 @@ export async function getMaterialForViewer(id: string): Promise<MaterialResult> 
     .leftJoin(schema.groups, eq(schema.groups.id, schema.materials.groupId))
     .where(eq(schema.materials.id, id))
     .limit(1);
-  const m = rows[0];
-  if (!m) return { status: "not_found" };
-  if (!(await canAccessGroup(m.groupId))) {
-    return { status: "locked", group: { id: m.groupId!, name: m.groupName ?? "" } };
+  const raw = rows[0];
+  if (!raw) return { status: "not_found" };
+  // Más felhasználó saját készletéről azt sem áruljuk el, hogy létezik.
+  if (raw.ownerUserId && !(await canAccessMaterial(raw))) return { status: "not_found" };
+  if (!(await canAccessMaterial(raw))) {
+    return { status: "locked", group: { id: raw.groupId!, name: raw.groupName ?? "" } };
   }
   const cards = await db
-    .select({ id: schema.cards.id, term: schema.cards.term, definition: schema.cards.definition })
+    .select(cardSelect)
     .from(schema.cards)
     .where(eq(schema.cards.materialId, id))
     .orderBy(asc(schema.cards.position), asc(schema.cards.createdAt));
-  const gradeThresholds = m.gradeThresholds ?? (await getGlobalThresholds());
-  return { status: "ok", material: { ...m, gradeThresholds }, cards };
+  const { gradeThresholds: own, ...m } = raw;
+  const gradeThresholds = own ?? (await getGlobalThresholds());
+  return { status: "ok", material: { ...toDTO(m), gradeThresholds }, cards };
 }
+
+export const cardSelect = { id: schema.cards.id, term: schema.cards.term, definition: schema.cards.definition, imageId: schema.cards.imageId };
 
 /** API-hoz: ellenőrzi, hogy a néző hozzáfér-e az anyaghoz, és (ha kell) hogy a kártyák ehhez az anyaghoz tartoznak. */
 export async function assertMaterialAccess(materialId: string, cardIds: string[] = []): Promise<boolean> {
-  const rows = await db.select({ groupId: schema.materials.groupId }).from(schema.materials).where(eq(schema.materials.id, materialId)).limit(1);
+  if (!/^[0-9a-f-]{36}$/i.test(materialId)) return false;
+  const rows = await db
+    .select({ groupId: schema.materials.groupId, ownerUserId: schema.materials.ownerUserId })
+    .from(schema.materials)
+    .where(eq(schema.materials.id, materialId))
+    .limit(1);
   if (!rows[0]) return false;
-  if (!(await canAccessGroup(rows[0].groupId))) return false;
+  if (!(await canAccessMaterial(rows[0]))) return false;
   if (cardIds.length) {
     const unique = [...new Set(cardIds)];
     const [{ n }] = await db
@@ -90,7 +113,7 @@ export async function assertMaterialAccess(materialId: string, cardIds: string[]
 }
 
 export async function loadStudyDataForUser(userId: string, materialId: string): Promise<StudyData> {
-  const [settingsRows, stateRows, progressRows, starredRows, testRows, matchRows] = await Promise.all([
+  const [settingsRows, stateRows, progressRows, starredRows, testRows, matchRows, reviewRows] = await Promise.all([
     db.select({ mode: schema.modeSettings.mode, settings: schema.modeSettings.settings }).from(schema.modeSettings).where(and(eq(schema.modeSettings.userId, userId), eq(schema.modeSettings.materialId, materialId))),
     db.select({ mode: schema.studyState.mode, state: schema.studyState.state }).from(schema.studyState).where(and(eq(schema.studyState.userId, userId), eq(schema.studyState.materialId, materialId))),
     db
@@ -105,6 +128,7 @@ export async function loadStudyDataForUser(userId: string, materialId: string): 
       .orderBy(desc(schema.testResults.createdAt))
       .limit(10),
     db.select({ bestMs: schema.matchBestTimes.bestMs }).from(schema.matchBestTimes).where(and(eq(schema.matchBestTimes.userId, userId), eq(schema.matchBestTimes.materialId, materialId))),
+    db.select().from(schema.cardReviews).where(and(eq(schema.cardReviews.userId, userId), eq(schema.cardReviews.materialId, materialId))),
   ]);
   const progress: Record<string, ProgressEntry> = {};
   for (const p of progressRows) progress[p.cardId] = { level: p.level, streak: p.streak, wrong: p.wrong, at: p.at.getTime() };
@@ -115,6 +139,7 @@ export async function loadStudyDataForUser(userId: string, materialId: string): 
     starred: starredRows.map((r) => r.cardId),
     tests: testRows.map(toTestRecord),
     matchBestMs: matchRows[0]?.bestMs ?? null,
+    srs: Object.fromEntries(reviewRows.map((r) => [r.cardId, rowToSrs(r)])),
   };
 }
 
@@ -143,7 +168,7 @@ export type RecentItem = {
 
 /** „Folytasd”: a felhasználó legutóbb tanult készletei haladással (csak amihez még hozzáfér). */
 export async function getRecentForUser(userId: string, limit = 8): Promise<RecentItem[]> {
-  const accessible = await getAccessibleGroupIds();
+  const visible = await materialVisibilityFilter();
   const rows = await db
     .select({
       materialId: schema.studyState.materialId,
@@ -152,6 +177,7 @@ export async function getRecentForUser(userId: string, limit = 8): Promise<Recen
       updatedAt: schema.studyState.updatedAt,
       title: schema.materials.title,
       groupId: schema.materials.groupId,
+      ownerUserId: schema.materials.ownerUserId,
       cardCount: sql<number>`(select count(*)::int from ${schema.cards} c where c.material_id = "materials"."id")`,
       mastered: sql<number>`(select count(*)::int from ${schema.cardProgress} p where p.user_id = ${userId} and p.material_id = "materials"."id" and p.level >= 3)`,
     })
@@ -163,7 +189,7 @@ export async function getRecentForUser(userId: string, limit = 8): Promise<Recen
   const seen = new Set<string>();
   const out: RecentItem[] = [];
   for (const r of rows) {
-    if (r.groupId && !accessible.has(r.groupId)) continue;
+    if (!visible(r)) continue;
     if (seen.has(r.materialId)) continue;
     seen.add(r.materialId);
     out.push(summarizeRecent(r.materialId, r.title, r.mode, r.state, r.cardCount, r.mastered, r.updatedAt.getTime()));
@@ -188,8 +214,7 @@ export async function searchMaterials(q: string): Promise<SearchResult[]> {
   const term = q.trim().slice(0, 80);
   if (term.length < 1) return [];
   const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const accessible = [...(await getAccessibleGroupIds())];
-  const accessWhere = accessible.length ? or(isNull(schema.materials.groupId), inArray(schema.materials.groupId, accessible)) : isNull(schema.materials.groupId);
+  const accessWhere = await materialAccessWhere();
   const titleHits = await db
     .select(materialSelect)
     .from(schema.materials)
@@ -204,11 +229,11 @@ export async function searchMaterials(q: string): Promise<SearchResult[]> {
     .where(and(accessWhere, or(ilike(schema.cards.term, pattern), ilike(schema.cards.definition, pattern))))
     .limit(60);
   const out = new Map<string, SearchResult>();
-  for (const m of titleHits) out.set(m.id, { material: m, matchedCard: null });
+  for (const m of titleHits) out.set(m.id, { material: toDTO(m), matchedCard: null });
   for (const c of cardHits) {
     if (out.has(c.id)) continue;
     const { term: t, definition: d, ...m } = c;
-    out.set(c.id, { material: m, matchedCard: `${t} – ${d}` });
+    out.set(c.id, { material: toDTO(m), matchedCard: `${t} – ${d}` });
   }
   return [...out.values()].slice(0, 40);
 }
@@ -216,7 +241,7 @@ export async function searchMaterials(q: string): Promise<SearchResult[]> {
 export type StarredItem = CardDTO & { materialId: string; materialTitle: string; termLang: string; definitionLang: string };
 
 export async function getStarredForUser(userId: string): Promise<StarredItem[]> {
-  const accessible = await getAccessibleGroupIds();
+  const visible = await materialVisibilityFilter();
   const rows = await db
     .select({
       id: schema.cards.id,
@@ -225,6 +250,8 @@ export async function getStarredForUser(userId: string): Promise<StarredItem[]> 
       materialId: schema.materials.id,
       materialTitle: schema.materials.title,
       groupId: schema.materials.groupId,
+      ownerUserId: schema.materials.ownerUserId,
+      imageId: schema.cards.imageId,
       termLang: schema.materials.termLang,
       definitionLang: schema.materials.definitionLang,
     })
@@ -234,19 +261,20 @@ export async function getStarredForUser(userId: string): Promise<StarredItem[]> 
     .where(eq(schema.starredCards.userId, userId))
     .orderBy(desc(schema.starredCards.createdAt))
     .limit(500);
-  return rows.filter((r) => !r.groupId || accessible.has(r.groupId)).map(({ groupId: _g, ...rest }) => rest);
+  return rows.filter(visible).map(({ groupId: _g, ownerUserId: _o, ...rest }) => rest);
 }
 
 export type TestListItem = { id: string; materialId: string; materialTitle: string; percent: number; grade: number; createdAt: string };
 
 export async function getTestsForUser(userId: string): Promise<TestListItem[]> {
-  const accessible = await getAccessibleGroupIds();
+  const visible = await materialVisibilityFilter();
   const rows = await db
     .select({
       id: schema.testResults.id,
       materialId: schema.testResults.materialId,
       materialTitle: schema.materials.title,
       groupId: schema.materials.groupId,
+      ownerUserId: schema.materials.ownerUserId,
       percent: schema.testResults.percent,
       grade: schema.testResults.grade,
       createdAt: schema.testResults.createdAt,
@@ -257,15 +285,15 @@ export async function getTestsForUser(userId: string): Promise<TestListItem[]> {
     .orderBy(desc(schema.testResults.createdAt))
     .limit(50);
   return rows
-    .filter((r) => !r.groupId || accessible.has(r.groupId))
-    .map(({ groupId: _g, createdAt, ...r }) => ({ ...r, createdAt: createdAt.toISOString() }));
+    .filter(visible)
+    .map(({ groupId: _g, ownerUserId: _o, createdAt, ...r }) => ({ ...r, createdAt: createdAt.toISOString() }));
 }
 
 /** Kártyák lekérése azonosító alapján (vendég könyvtárához), csak amihez a néző hozzáfér. */
 export async function lookupCards(ids: string[]): Promise<StarredItem[]> {
   const unique = [...new Set(ids)].filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 500);
   if (!unique.length) return [];
-  const accessible = await getAccessibleGroupIds();
+  const visible = await materialVisibilityFilter();
   const rows = await db
     .select({
       id: schema.cards.id,
@@ -274,13 +302,15 @@ export async function lookupCards(ids: string[]): Promise<StarredItem[]> {
       materialId: schema.materials.id,
       materialTitle: schema.materials.title,
       groupId: schema.materials.groupId,
+      ownerUserId: schema.materials.ownerUserId,
+      imageId: schema.cards.imageId,
       termLang: schema.materials.termLang,
       definitionLang: schema.materials.definitionLang,
     })
     .from(schema.cards)
     .innerJoin(schema.materials, eq(schema.materials.id, schema.cards.materialId))
     .where(inArray(schema.cards.id, unique));
-  return rows.filter((r) => !r.groupId || accessible.has(r.groupId)).map(({ groupId: _g, ...rest }) => rest);
+  return rows.filter(visible).map(({ groupId: _g, ownerUserId: _o, ...rest }) => rest);
 }
 
 export { getViewer };
