@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { argon2id } from "hash-wasm";
-import { Copy, ShieldCheck } from "lucide-react";
+import { Copy, Download, ShieldCheck } from "lucide-react";
+import { makeZip } from "@/lib/client/zip";
 import { Button, PasswordField } from "../ui";
 import { LogoMark } from "../logo";
 
@@ -44,7 +45,52 @@ function CopyBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function HashTool() {
+function SkillDownload({ files }: { files: { path: string; content: string }[] }) {
+  const [key, setKey] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-card">
+      <h2 className="font-bold">4. Claude skill letöltése (az import API-hoz)</h2>
+      <p className="text-sm text-muted">
+        Másold be ide ugyanazt a kulcsot, amit a Vercelen az IMPORT_API_KEY-be tettél. A skill a böngésződben áll össze, a kulcs nem megy el a szerverre. A letöltött ZIP-et a Claude appban a Beállítások → Képességek → Skillek részen töltsd fel.
+      </p>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setErr(null);
+          const k = key.trim();
+          if (k.length < 32 || /[\s,]/.test(k)) return setErr("Ez nem tűnik érvényes kulcsnak (legalább 32 karakter, szóköz és vessző nélkül).");
+          if (!files.length) return setErr("A skill fájljai nem érhetők el ezen a szerveren.");
+          const config = JSON.stringify({ baseUrl: window.location.origin, apiKey: k }, null, 2) + "\n";
+          const zip = makeZip([...files, { path: "config.json", content: config }].map((f) => ({ path: `flashly-import/${f.path}`, content: f.content })));
+          const url = URL.createObjectURL(new Blob([zip as BlobPart], { type: "application/zip" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "flashly-import.zip";
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 10_000);
+          setKey("");
+          setDone(true);
+        }}
+      >
+        <PasswordField label="IMPORT_API_KEY" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
+        {err ? (
+          <p role="alert" className="font-medium text-danger">
+            {err}
+          </p>
+        ) : null}
+        <Button type="submit" variant="soft">
+          <Download className="size-4" aria-hidden /> Skill letöltése (ZIP)
+        </Button>
+      </form>
+      {done ? <p className="text-sm text-known">Kész. A ZIP-ben benne van a kulcs, ezért ne oszd meg senkivel, feltöltés után törölheted.</p> : null}
+    </section>
+  );
+}
+
+export function HashTool({ skillFiles = [] }: { skillFiles?: { path: string; content: string }[] }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [hash, setHash] = useState<string | null>(null);
@@ -118,6 +164,8 @@ export function HashTool() {
         </Button>
         {apiKey ? <CopyBox label="Ezt másold be a Vercelen az IMPORT_API_KEY értékének (és az agentnek):" value={apiKey} /> : null}
       </section>
+
+      <SkillDownload files={skillFiles} />
     </main>
   );
 }

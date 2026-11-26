@@ -123,3 +123,14 @@ Hiba esetén mindig ez a forma jön:
 - A készlet és az összes kártyája egyetlen adatbázis-tranzakcióban jön létre. Ha bármi elromlik, semmi nem marad utána, félkész készlet sem.
 - Az `api_imports` táblába a kérés tartalmából csak ujjlenyomat (hash) kerül. Ez kell a duplikátumok kiszűréséhez.
 - A létrehozott készlet utána az admin felületen ugyanúgy szerkeszthető vagy törölhető, mint bármelyik másik.
+
+## Claude skill (a legegyszerűbb út)
+
+A `skills/flashly-import` mappában kész skill van, amivel a Claude (claude.ai vagy a Claude app) magától megírja és feltölti a kártyákat.
+
+1. Nyisd meg a hash-generátor oldalt, és a **4. Claude skill letöltése** résznél másold be az `IMPORT_API_KEY` értékét. A böngésző letölti a `flashly-import.zip` fájlt; a kulcs a ZIP-en belüli `config.json`-ba kerül, a szerverre nem megy el.
+2. Claude app → Beállítások → Képességek (Capabilities): a kódfuttatás legyen bekapcsolva, és a hálózati hozzáférésnél engedélyezd a `flashly.vercel.app` domaint.
+3. Ugyanitt a Skillek résznél töltsd fel a ZIP-et.
+4. Írd a Claude-nak például: „Csinálj 30 angol B2 szókártyát az utazás témában, és töltsd fel a Flashlyba.”
+
+A skill a `scripts/upload.py` szkripttel tölt fel (csak a Python standard könyvtárát használja), a kulcsot nem írja ki. Claude Code-ban a `FLASHLY_API_KEY` környezeti változóból is olvassa a kulcsot.

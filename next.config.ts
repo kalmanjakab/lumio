@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_COMMIT: process.env.FLASHLY_COMMIT || "",
   },
   reactStrictMode: true,
+  // A hash-oldal ebből a mappából rakja össze a letölthető Claude skillt.
+  outputFileTracingIncludes: { "/adm-internal/**": ["./skills/flashly-import/**/*"] },
   serverExternalPackages: ["@node-rs/argon2", "sharp", "pg"],
   turbopack: {
     rules: {
